@@ -403,8 +403,7 @@ public:
     void SetStayOnTop(bool) {}
     void SetFullScreenMode(bool fullscreen) {
         if(const auto host = TVPGetEmbeddedSessionHost()) {
-            host->set_fullscreen(host->context, this, fullscreen);
-            EmbeddedFullScreen = fullscreen;
+            EmbeddedFullScreen = host->set_fullscreen(host->context, this, fullscreen);
         }
     }
     tjs_int GetLeft() { return 0; }

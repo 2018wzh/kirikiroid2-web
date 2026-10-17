@@ -372,7 +372,7 @@ void TVPAfterSystemInit() {
 
 //---------------------------------------------------------------------------
 void TVPBeforeSystemUninit() {
-    // TVPDumpHWException(); // dump cached hw exceptoin
+    if(Application) Application->StopImageLoader();
 }
 
 //---------------------------------------------------------------------------
@@ -405,7 +405,7 @@ void TVPTerminateAsync(int code) {
 //---------------------------------------------------------------------------
 void TVPTerminateSync(int code) {
     // do synchronous temination of application (never return)
-    TVPSystemUninit();
+    if(!TVPGetEmbeddedSessionHost()) TVPSystemUninit();
     TVPExitApplication(code);
 }
 
@@ -459,6 +459,21 @@ std::vector<ttstr> TVPProgramArguments;
 static bool TVPProgramArgumentsInit = false;
 static tjs_int TVPCommandLineArgumentGeneration = 0;
 static bool TVPDataPathDirectoryEnsured = false;
+
+void TVPResetSystemOptions() {
+    TVPTerminated = false;
+    TVPTerminateCode = 0;
+    TVPTerminateOnWindowClose = true;
+    TVPTerminateOnNoWindowStartup = true;
+    TVPProjectDirSelected = false;
+    TVPProgramArguments.clear();
+    TVPProgramArgumentsInit = false;
+    TVPDataPathDirectoryEnsured = false;
+    ++TVPCommandLineArgumentGeneration;
+    TVPProjectDir.Clear();
+    TVPDataPath.Clear();
+    TVPNativeDataPath.Clear();
+}
 
 //---------------------------------------------------------------------------
 tjs_int TVPGetCommandLineArgumentGeneration() {

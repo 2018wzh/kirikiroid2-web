@@ -85,6 +85,8 @@ void NI_LayerExBase::unInit() {
         _pitchProp->Release();
     if(_updateProp)
         _updateProp->Release();
+    _leftProp = _topProp = _widthProp = _heightProp = nullptr;
+    _bufferProp = _pitchProp = _updateProp = nullptr;
 }
 
 tTVPAtExit _NI_LayerExBase_unInit(TVP_ATEXIT_PRI_PREPARE,

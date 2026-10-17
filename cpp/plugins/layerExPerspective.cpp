@@ -192,9 +192,8 @@ static tjs_error PerspectiveCopy_GL(tTJSVariant *result, tjs_int numparams,
         { param[9]->AsReal(), param[10]->AsReal() }, // 左下
         { param[11]->AsReal(), param[12]->AsReal() }, // 右下
     };
-    static iTVPRenderMethod *method =
-        TVPGetRenderManager()->GetRenderMethod("PerspectiveAlphaBlend_a");
-    static int id_opa = method->EnumParameterID("opacity");
+    static thread_local iTVPRenderMethod *method = TVPGetRenderManager()->GetRenderMethod("PerspectiveAlphaBlend_a");
+    static thread_local int id_opa = method->EnumParameterID("opacity");
     method->SetParameterOpa(id_opa, 255);
     iTVPTexture2D *tex = src->GetMainImage()->GetTexture();
     tRenderTexQuadArray::Element src_tex[] = { tRenderTexQuadArray::Element(

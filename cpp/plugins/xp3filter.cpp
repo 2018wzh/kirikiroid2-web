@@ -7,6 +7,7 @@
 #include "tjsDebug.h"
 #include "xp3filter.h"
 #include "ThreadIntf.h"
+#include "ThreadImpl.h"
 #include <memory>
 #include <thread>
 #include <spdlog/spdlog.h>
@@ -24,8 +25,14 @@ struct XP3FilterDecoder {
     tTJSVariantClosure ManagedFilter;
     XP3FilterDecoder() : ManagedDecoder(nullptr), ManagedFilter(nullptr) {}
     ~XP3FilterDecoder() {
-        if(ScriptEngine)
+        if(ManagedDecoder.Object) ManagedDecoder.Release();
+        if(ManagedFilter.Object) ManagedFilter.Release();
+        if(ScriptEngine) {
+            try { ScriptEngine->Shutdown(); }
+            catch(const TJS::eTJSSilent &) {}
+            catch(...) { TVPRecordWorkerFailure(std::current_exception()); }
             ScriptEngine->Release();
+        }
     }
 };
 
@@ -304,3 +311,23 @@ static void PostRegistCallback() {
 }
 
 NCB_POST_REGIST_CALLBACK(PostRegistCallback);
+
+static void EndSessionCallback() {
+    // All stream/image/audio producers have joined before plugin unregister.
+    // Cached decoders own separate TJS VMs and must never cross game sessions.
+    TVPSetXP3ArchiveExtractionFilter(nullptr);
+    TVPSetXP3ArchiveContentFilter(nullptr);
+    std::lock_guard<std::mutex> lock(_decoders_mtx);
+    for(const auto &entry : _thread_decoders) delete entry.second;
+    _thread_decoders.clear();
+#ifdef __EMSCRIPTEN__
+    delete _shared_decoder;
+    _shared_decoder = nullptr;
+#else
+    for(auto decoder : _cached_decoders) delete decoder;
+    _cached_decoders.clear();
+#endif
+    sXP3FilterScript.Clear();
+    _ManagedDecoderInited = _ManagedFilterInited = false;
+}
+NCB_POST_UNREGIST_CALLBACK(EndSessionCallback);

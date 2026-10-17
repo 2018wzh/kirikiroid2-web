@@ -1027,15 +1027,14 @@ namespace motion::internal::render_detail {
                     }
                 } else {
                     static std::uint32_t methodHint = 0;
-                    static iTVPRenderMethod *method =
-                        TVPGetRenderManager()
-                            ->GetOrCompileRenderMethod(
-                                "AddAlphaMask", &methodHint,
-                                "void main() { gl_FragColor = texture2D(tex0, v_texCoord0); }\n",
-                                1, 0)
-                            ->SetBlendFuncSeparate(
-                                GL_FUNC_ADD, GL_ZERO, GL_ONE, GL_ONE,
-                                GL_ONE_MINUS_SRC_ALPHA);
+                    static thread_local iTVPRenderMethod *method = TVPGetRenderManager()
+                        ->GetOrCompileRenderMethod(
+                            "AddAlphaMask", &methodHint,
+                            "void main() { gl_FragColor = texture2D(tex0, v_texCoord0); }\n",
+                            1, 0)
+                        ->SetBlendFuncSeparate(
+                            GL_FUNC_ADD, GL_ZERO, GL_ONE, GL_ONE,
+                            GL_ONE_MINUS_SRC_ALPHA);
                     TVPGetRenderManager()->OperateRect(
                         method, dstRenderTexture, dstReferenceTexture,
                         overlapRect, tRenderTexRectArray(sourceTextures));
@@ -1058,15 +1057,14 @@ namespace motion::internal::render_detail {
                     }
                 } else {
                     static std::uint32_t methodHint = 0;
-                    static iTVPRenderMethod *method =
-                        TVPGetRenderManager()
-                            ->GetOrCompileRenderMethod(
-                                "AlphaMaskRev", &methodHint,
-                                "void main() { gl_FragColor = texture2D(tex0, v_texCoord0); }\n",
-                                1, 0)
-                            ->SetBlendFuncSeparate(
-                                GL_FUNC_ADD, GL_ZERO, GL_ONE, GL_ZERO,
-                                GL_ONE_MINUS_SRC_ALPHA);
+                    static thread_local iTVPRenderMethod *method = TVPGetRenderManager()
+                        ->GetOrCompileRenderMethod(
+                            "AlphaMaskRev", &methodHint,
+                            "void main() { gl_FragColor = texture2D(tex0, v_texCoord0); }\n",
+                            1, 0)
+                        ->SetBlendFuncSeparate(
+                            GL_FUNC_ADD, GL_ZERO, GL_ONE, GL_ZERO,
+                            GL_ONE_MINUS_SRC_ALPHA);
                     TVPGetRenderManager()->OperateRect(
                         method, dstRenderTexture, dstReferenceTexture,
                         overlapRect, tRenderTexRectArray(sourceTextures));
@@ -1091,15 +1089,14 @@ namespace motion::internal::render_detail {
                     }
                 } else {
                     static std::uint32_t methodHint = 0;
-                    static iTVPRenderMethod *method =
-                        TVPGetRenderManager()
-                            ->GetOrCompileRenderMethod(
-                                "AlphaMask", &methodHint,
-                                "void main() { gl_FragColor = texture2D(tex0, v_texCoord0); }\n",
-                                1, 0)
-                            ->SetBlendFuncSeparate(
-                                GL_FUNC_ADD, GL_ZERO, GL_ONE, GL_ZERO,
-                                GL_SRC_ALPHA);
+                    static thread_local iTVPRenderMethod *method = TVPGetRenderManager()
+                        ->GetOrCompileRenderMethod(
+                            "AlphaMask", &methodHint,
+                            "void main() { gl_FragColor = texture2D(tex0, v_texCoord0); }\n",
+                            1, 0)
+                        ->SetBlendFuncSeparate(
+                            GL_FUNC_ADD, GL_ZERO, GL_ONE, GL_ZERO,
+                            GL_SRC_ALPHA);
                     TVPGetRenderManager()->OperateRect(
                         method, dstRenderTexture, dstReferenceTexture,
                         overlapRect, tRenderTexRectArray(sourceTextures));
@@ -1121,18 +1118,16 @@ namespace motion::internal::render_detail {
                     }
                 } else {
                     static std::uint32_t methodHint = 0;
-                    static iTVPRenderMethod *method =
-                        TVPGetRenderManager()
-                            ->GetOrCompileRenderMethod(
-                                "AlphaMaskThresholdFill", &methodHint,
-                                "uniform float threshold;\n"
-                                "void main() { gl_FragColor = vec4(0,0,0,step(threshold, texture2D(tex0, v_texCoord0).a)); }\n",
-                                1, 0)
-                            ->SetBlendFuncSeparate(
-                                GL_MAX, GL_ZERO, GL_ONE, GL_ZERO,
-                                GL_ONE_MINUS_SRC_ALPHA);
-                    static int thresholdId =
-                        method->EnumParameterID("threshold");
+                    static thread_local iTVPRenderMethod *method = TVPGetRenderManager()
+                        ->GetOrCompileRenderMethod(
+                            "AlphaMaskThresholdFill", &methodHint,
+                            "uniform float threshold;\n"
+                            "void main() { gl_FragColor = vec4(0,0,0,step(threshold, texture2D(tex0, v_texCoord0).a)); }\n",
+                            1, 0)
+                        ->SetBlendFuncSeparate(
+                            GL_MAX, GL_ZERO, GL_ONE, GL_ZERO,
+                            GL_ONE_MINUS_SRC_ALPHA);
+                    static thread_local int thresholdId = method->EnumParameterID("threshold");
                     method->SetParameterOpa(thresholdId, threshold);
                     TVPGetRenderManager()->OperateRect(
                         method, dstRenderTexture, dstReferenceTexture,
@@ -1153,18 +1148,16 @@ namespace motion::internal::render_detail {
                     }
                 } else {
                     static std::uint32_t methodHint = 0;
-                    static iTVPRenderMethod *method =
-                        TVPGetRenderManager()
-                            ->GetOrCompileRenderMethod(
-                                "AlphaMaskThresholdCrop", &methodHint,
-                                "uniform float threshold;\n"
-                                "void main() { gl_FragColor = vec4(0,0,0,step(threshold, texture2D(tex0, v_texCoord0).a)); }\n",
-                                1, 0)
-                            ->SetBlendFuncSeparate(
-                                GL_FUNC_ADD, GL_ZERO, GL_ONE, GL_ZERO,
-                                GL_ONE_MINUS_SRC_ALPHA);
-                    static int thresholdId =
-                        method->EnumParameterID("threshold");
+                    static thread_local iTVPRenderMethod *method = TVPGetRenderManager()
+                        ->GetOrCompileRenderMethod(
+                            "AlphaMaskThresholdCrop", &methodHint,
+                            "uniform float threshold;\n"
+                            "void main() { gl_FragColor = vec4(0,0,0,step(threshold, texture2D(tex0, v_texCoord0).a)); }\n",
+                            1, 0)
+                        ->SetBlendFuncSeparate(
+                            GL_FUNC_ADD, GL_ZERO, GL_ONE, GL_ZERO,
+                            GL_ONE_MINUS_SRC_ALPHA);
+                    static thread_local int thresholdId = method->EnumParameterID("threshold");
                     method->SetParameterOpa(thresholdId, threshold);
                     TVPGetRenderManager()->OperateRect(
                         method, dstRenderTexture, dstReferenceTexture,
@@ -1188,18 +1181,16 @@ namespace motion::internal::render_detail {
                     }
                 } else {
                     static std::uint32_t methodHint = 0;
-                    static iTVPRenderMethod *method =
-                        TVPGetRenderManager()
-                            ->GetOrCompileRenderMethod(
-                                "AlphaMaskThreshold", &methodHint,
-                                "uniform float threshold;\n"
-                                "void main() { gl_FragColor = vec4(0,0,0,step(threshold, texture2D(tex0, v_texCoord0).a)); }\n",
-                                1, 0)
-                            ->SetBlendFuncSeparate(
-                                GL_FUNC_ADD, GL_ZERO, GL_ONE, GL_ZERO,
-                                GL_SRC_ALPHA);
-                    static int thresholdId =
-                        method->EnumParameterID("threshold");
+                    static thread_local iTVPRenderMethod *method = TVPGetRenderManager()
+                        ->GetOrCompileRenderMethod(
+                            "AlphaMaskThreshold", &methodHint,
+                            "uniform float threshold;\n"
+                            "void main() { gl_FragColor = vec4(0,0,0,step(threshold, texture2D(tex0, v_texCoord0).a)); }\n",
+                            1, 0)
+                        ->SetBlendFuncSeparate(
+                            GL_FUNC_ADD, GL_ZERO, GL_ONE, GL_ZERO,
+                            GL_SRC_ALPHA);
+                    static thread_local int thresholdId = method->EnumParameterID("threshold");
                     method->SetParameterOpa(thresholdId, threshold);
                     TVPGetRenderManager()->OperateRect(
                         method, dstRenderTexture, dstReferenceTexture,

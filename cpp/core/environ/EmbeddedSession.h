@@ -14,7 +14,7 @@ struct TVPEmbeddedSessionHost {
     void (*frame_changed)(void *, tTJSNI_BaseWindow *);
     void (*frame_ready)(void *, tTJSNI_BaseWindow *, iTVPTexture2D *, unsigned int, unsigned int);
     void (*request_exit)(void *, int);
-    void (*set_fullscreen)(void *, iWindowLayer *, bool);
+    bool (*set_fullscreen)(void *, iWindowLayer *, bool);
     void (*set_caption)(void *, iWindowLayer *, const std::string &);
 };
 inline std::atomic<const TVPEmbeddedSessionHost *> TVPEmbeddedSessionHostSlot{nullptr};

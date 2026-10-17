@@ -20,6 +20,7 @@
 #include <memory>
 #include <mutex>
 #include <thread>
+#include <stdexcept>
 #include <fmt/printf.h>
 #include "tjs.h"
 #include "tjsScriptBlock.h"
@@ -687,7 +688,9 @@ namespace TJS {
             tTJSBinaryStreamAsyncExecutor() :
                 Worker([this] { Execute(); }) {}
 
-            ~tTJSBinaryStreamAsyncExecutor() {
+            ~tTJSBinaryStreamAsyncExecutor() { Stop(); }
+            bool IsWorkerThread() const { return Worker.get_id() == std::this_thread::get_id(); }
+            void Stop() {
                 {
                     std::lock_guard<std::mutex> lock(Mutex);
                     Stopping = true;
@@ -706,9 +709,17 @@ namespace TJS {
             }
         };
 
+        std::mutex BinaryStreamExecutorMutex;
+        std::unique_ptr<tTJSBinaryStreamAsyncExecutor> BinaryStreamExecutor;
+        bool BinaryStreamExecutorClosing = false;
         tTJSBinaryStreamAsyncExecutor &GetBinaryStreamAsyncExecutor() {
-            static tTJSBinaryStreamAsyncExecutor executor;
-            return executor;
+            std::lock_guard<std::mutex> lock(BinaryStreamExecutorMutex);
+            if(BinaryStreamExecutorClosing &&
+                (!BinaryStreamExecutor || !BinaryStreamExecutor->IsWorkerThread()))
+                throw std::runtime_error("binary stream session is closing");
+            if(!BinaryStreamExecutor)
+                BinaryStreamExecutor = std::make_unique<tTJSBinaryStreamAsyncExecutor>();
+            return *BinaryStreamExecutor;
         }
 
         template <typename Callback, typename... Args>
@@ -723,6 +734,22 @@ namespace TJS {
             }
         }
     } // namespace
+
+    void TJSBeginBinaryStreamSession() {
+        std::lock_guard<std::mutex> lock(BinaryStreamExecutorMutex);
+        BinaryStreamExecutorClosing = false;
+    }
+    void TJSShutdownBinaryStreamExecutor() {
+        tTJSBinaryStreamAsyncExecutor *executor;
+        {
+            std::lock_guard<std::mutex> lock(BinaryStreamExecutorMutex);
+            BinaryStreamExecutorClosing = true;
+            executor = BinaryStreamExecutor.get();
+        }
+        if(executor) executor->Stop();
+        std::lock_guard<std::mutex> lock(BinaryStreamExecutorMutex);
+        BinaryStreamExecutor.reset();
+    }
 
     class tTJSBinaryStream::tAsyncQueueState final
         : public std::enable_shared_from_this<tAsyncQueueState> {

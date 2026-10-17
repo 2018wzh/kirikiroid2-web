@@ -242,6 +242,8 @@ protected:
     int _frame_size = 0;
 
 public:
+    virtual ~iTVPAudioRenderer() = default;
+    bool HasStreams() const { return !_streams.empty(); }
     iTVPAudioRenderer() {
         memset(&_spec, 0, sizeof(_spec));
         _spec.freq = 48000;
@@ -753,29 +755,14 @@ public:
             _borrowedContext = true;
             return true;
         }
-        ALboolean enumeration =
-            alcIsExtensionPresent(nullptr, "ALC_ENUMERATION_EXT");
-        if(enumeration == AL_FALSE) {
-            // enumeration not supported
-            _device = alcOpenDevice(nullptr);
-        } else {
-            // enumeration supported
-            const ALCchar *devices =
-                alcGetString(nullptr, ALC_DEVICE_SPECIFIER);
-            std::vector<std::string> alldev;
-            ttstr log(TJS_W("(info) Sound Driver/Device found : "));
-            while(*devices) {
-                TVPAddImportantLog(log + devices);
-                alldev.emplace_back(devices);
-                devices += alldev.back().length();
-            }
-            _device = alcOpenDevice(alldev[0].c_str());
-        }
+        // The native device owns playback and its mixer thread. Do not install a
+        // loopback context or infer playback progress from the embedding host.
+        _device = alcOpenDevice(nullptr);
         if(!_device)
             return false;
 
         _context = alcCreateContext(_device, nullptr);
-        alcMakeContextCurrent(_context);
+        if(!_context || !alcMakeContextCurrent(_context)) return false;
 
         return true;
     }
@@ -805,6 +792,15 @@ void TVPReleaseEmbeddedAudioRenderer() {
     TVPAudioRenderer = nullptr;
 }
 
+void TVPReleaseAudioRenderer() {
+    if(!TVPAudioRenderer) return;
+    if(TVPAudioRenderer->HasStreams())
+        throw std::runtime_error("OpenAL renderer still owns live streams");
+    delete TVPAudioRenderer;
+    TVPAudioRenderer = nullptr;
+    SDL_QuitSubSystem(SDL_INIT_AUDIO);
+}
+
 void tTVPSoundBufferAL::checkerr(const char *funcname) {
 #if _DEBUG
     ALCcontext *ctx =
@@ -832,7 +828,10 @@ static iTVPAudioRenderer *CreateAudioRenderer() {
     return renderer;
 #endif
     renderer = new tTVPAudioRendererAL;
-    renderer->Init();
+    if(!renderer->Init()) {
+        delete renderer;
+        throw std::runtime_error("OpenAL playback device initialization failed");
+    }
     return renderer;
 }
 

@@ -52,7 +52,7 @@ iTVPRenderManager *GetD3DRenderManager() {
     // The process-wide renderer may still be "software": that setting selects
     // the CPU layer path, while DrawDeviceD3D uses this private manager for
     // target textures and composition.
-    static iTVPRenderManager *manager =
+    static thread_local iTVPRenderManager *manager =
         TVPGetRenderManager(TJS_W("opengl"));
     return manager;
 }
@@ -1108,9 +1108,9 @@ void DrawDeviceObjectBase::Show() {
     // that passes the Window gate, even when no transition is active.  The
     // color is then published once per active Show and the FrontTarget-sized
     // rectangle is reused for both fill operations.
-    static iTVPRenderMethod *fillMethod =
+    static thread_local iTVPRenderMethod *fillMethod =
         renderManager->GetRenderMethod("FillARGB");
-    static const int fillColorId = fillMethod->EnumParameterID("color");
+    static thread_local const int fillColorId = fillMethod->EnumParameterID("color");
     if(TransitionActive) {
         fillMethod->SetParameterColor4B(fillColorId, ClearColor);
         const tTVPRect fillRect(
@@ -1139,9 +1139,9 @@ void DrawDeviceObjectBase::Show() {
         // TransitionState here. The parsed universal method, vague value and
         // retained rule texture are not consulted by the rendering path.
         if(TransitionActive) {
-            static iTVPRenderMethod *method =
+            static thread_local iTVPRenderMethod *method =
                 renderManager->GetRenderMethod("AlphaBlend_SD");
-            static const int opacityId =
+            static thread_local const int opacityId =
                 method->EnumParameterID("opacity");
             method->SetParameterFloat(opacityId, TransitionState);
             const tTVPRect targetRect(
@@ -1229,9 +1229,9 @@ void DrawDeviceObjectBase::StartBitmapCompletion(
         return;
 
     iTVPRenderManager *renderManager = bitmap->GetRenderManager();
-    static iTVPRenderMethod *method =
+    static thread_local iTVPRenderMethod *method =
         renderManager->GetRenderMethod("FillARGB");
-    static const int colorId = method->EnumParameterID("color");
+    static thread_local const int colorId = method->EnumParameterID("color");
     method->SetParameterColor4B(colorId, 0);
 
     if(TVPIsSoftwareRenderManager()) {

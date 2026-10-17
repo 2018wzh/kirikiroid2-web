@@ -967,9 +967,9 @@ public:
     void SetCaption(const std::string &s) override {
         if(_caption == s)
             return;
-        _caption = s;
         if(const auto host = TVPGetEmbeddedSessionHost())
             host->set_caption(host->context, this, s);
+        _caption = s;
     }
 
     void ResetDrawSprite() {
@@ -1962,6 +1962,20 @@ public:
 
 static TVPMainScene *_instance = nullptr;
 
+TVPMainScene::~TVPMainScene() {
+    if(_instance == this) _instance = nullptr;
+    _lastWindowLayer = _currentWindowLayer = nullptr;
+    _windowMgrOverlay = nullptr;
+    _consoleWin = nullptr;
+    _mouseCursor = nullptr;
+    _fpsLabel = nullptr;
+    _mouseTouches.clear();
+    _virutalMouseMode = _mouseMoved = _mouseClickedDown = false;
+    std::fill(std::begin(_scancode), std::end(_scancode), 0);
+    _postUpdate = nullptr;
+    _func_mask_layer_touchbegan = {};
+}
+
 TVPMainScene *TVPMainScene::GetInstance() { return _instance; }
 
 TVPMainScene *TVPMainScene::CreateInstance() {
@@ -2389,7 +2403,7 @@ static float _getUIScale() {
 }
 
 float TVPMainScene::getUIScale() {
-    static float uiscale = _getUIScale();
+    static thread_local float uiscale = _getUIScale();
     return uiscale;
 }
 
@@ -2879,7 +2893,7 @@ void TVPRemoveWindowLayer(iWindowLayer *lay) {
 }
 
 void TVPConsoleLog(const ttstr &l, bool important) {
-    static bool TVPLoggingToConsole =
+    static thread_local bool TVPLoggingToConsole =
         IndividualConfigManager::GetInstance()->GetValue<bool>("outputlog",
                                                                true);
     if(!TVPLoggingToConsole)
@@ -2932,7 +2946,7 @@ static std::string _TVPGetInternalPreferencePath() {
 }
 
 const std::string &TVPGetInternalPreferencePath() {
-    static std::string ret = _TVPGetInternalPreferencePath();
+    static thread_local std::string ret = _TVPGetInternalPreferencePath();
     return ret;
 }
 #endif
