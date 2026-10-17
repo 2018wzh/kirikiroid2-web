@@ -94,3 +94,10 @@ private:
     cocos2d::EventListenerTouchOneByOne *_touchListener;
     TVPGameMainMenu *_gameMenu;
 };
+
+class tTJSNI_Window;
+tTJSNI_Window *TVPGetCurrentWindowNative();
+void TVPDispatchWindowKey(unsigned int code, bool pressed);
+void TVPDispatchWindowPointerMove(float x, float y);
+void TVPDispatchWindowPointerButton(int button, bool pressed, float x, float y);
+void TVPDispatchWindowWheel(int delta, float x, float y);

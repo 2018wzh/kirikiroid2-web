@@ -1,4 +1,5 @@
 #include "RenderManager.h"
+#include "../environ/EmbeddedSession.h"
 #include "renderer/CCTexture2D.h"
 typedef cocos2d::Texture2D::PixelFormat CCPixelFormat;
 #include "MsgIntf.h"
@@ -5281,9 +5282,10 @@ iTVPRenderManager *TVPGetRenderManager(const ttstr &name) {
 iTVPRenderManager *TVPGetRenderManager() {
     static iTVPRenderManager *_RenderManager;
     if(!_RenderManager) {
-        ttstr str =
-            IndividualConfigManager::GetInstance()->GetValue<std::string>(
-                "renderer", "software");
+        const auto embedded = TVPGetEmbeddedSessionHost();
+        ttstr str = embedded ? ttstr(embedded->renderer) :
+            ttstr(IndividualConfigManager::GetInstance()->GetValue<std::string>(
+                "renderer", "software"));
         _RenderManager = TVPGetRenderManager(str);
     }
     return _RenderManager;

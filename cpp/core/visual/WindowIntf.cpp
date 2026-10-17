@@ -16,6 +16,7 @@
 #include "ScriptMgnIntf.h"
 #include "MsgIntf.h"
 #include "WindowIntf.h"
+#include "../environ/EmbeddedSession.h"
 #include "LayerIntf.h"
 #include "DebugIntf.h"
 #include "EventIntf.h"
@@ -646,7 +647,14 @@ void tTJSNI_BaseWindow::BeginUpdate(const tTVPComplexRect &rects) {
     WindowUpdating = true;
 }
 //---------------------------------------------------------------------------
-void tTJSNI_BaseWindow::EndUpdate() { WindowUpdating = false; }
+void tTJSNI_BaseWindow::EndUpdate() {
+    const bool changed = WindowUpdating;
+    WindowUpdating = false;
+    if(changed) {
+        if(const auto host = TVPGetEmbeddedSessionHost())
+            host->frame_changed(host->context, this);
+    }
+}
 //---------------------------------------------------------------------------
 void tTJSNI_BaseWindow::DumpPrimaryLayerStructure() {
     if(DrawDevice)

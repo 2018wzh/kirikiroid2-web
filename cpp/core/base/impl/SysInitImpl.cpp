@@ -17,6 +17,7 @@
 // #include <commdlg.h>
 
 #include "SysInitImpl.h"
+#include "../../environ/EmbeddedSession.h"
 #include "StorageIntf.h"
 #include "StorageImpl.h"
 #include "MsgIntf.h"
@@ -288,7 +289,8 @@ void TVPAfterSystemInit() {
         }
     }
     // check TVPGraphicSplitOperation option
-    std::string _val =
+    const auto embedded = TVPGetEmbeddedSessionHost();
+    std::string _val = embedded ? embedded->renderer :
         IndividualConfigManager::GetInstance()->GetValue<std::string>(
             "renderer", "software");
     if(_val != "software") {

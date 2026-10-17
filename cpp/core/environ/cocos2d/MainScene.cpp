@@ -1,4 +1,5 @@
 #include "MainScene.h"
+#include "../EmbeddedSession.h"
 #include "cocos2d.h"
 #include "cocos-ext.h"
 #include "tjsCommHead.h"
@@ -768,8 +769,11 @@ public:
 
     void onMouseDown(const Vec2 &pt) {
         Vec2 nsp = PrimaryLayerArea->convertToNodeSpace(pt);
-        _LastMouseX = nsp.x,
-        _LastMouseY = PrimaryLayerArea->getContentSize().height - nsp.y;
+        onMouseDown(nsp.x, PrimaryLayerArea->getContentSize().height - nsp.y);
+    }
+    void onMouseDown(int x, int y) {
+        _LastMouseX = x;
+        _LastMouseY = y;
         LastMouseDownX = _LastMouseX;
         LastMouseDownY = _LastMouseY;
         _scancode[TVPConvertMouseBtnToVKCode(_mouseBtn)] = 0x11;
@@ -780,8 +784,11 @@ public:
 
     void onMouseUp(const Vec2 &pt, bool emitClick = false) {
         Vec2 nsp = PrimaryLayerArea->convertToNodeSpace(pt);
-        _LastMouseX = nsp.x,
-        _LastMouseY = PrimaryLayerArea->getContentSize().height - nsp.y;
+        onMouseUp(nsp.x, PrimaryLayerArea->getContentSize().height - nsp.y, emitClick);
+    }
+    void onMouseUp(int x, int y, bool emitClick) {
+        _LastMouseX = x;
+        _LastMouseY = y;
         if(emitClick && _mouseBtn == mbLeft) {
             TVPPostInputEvent(new tTVPOnClickInputEvent(
                 TJSNativeInstance, LastMouseDownX, LastMouseDownY));
@@ -794,8 +801,11 @@ public:
 
     void onMouseMove(const Vec2 &pt) {
         Vec2 nsp = PrimaryLayerArea->convertToNodeSpace(pt);
-        _LastMouseX = nsp.x,
-        _LastMouseY = PrimaryLayerArea->getContentSize().height - nsp.y;
+        onMouseMove(nsp.x, PrimaryLayerArea->getContentSize().height - nsp.y);
+    }
+    void onMouseMove(int x, int y) {
+        _LastMouseX = x;
+        _LastMouseY = y;
         TVPPostInputEvent(new tTVPOnMouseMoveInputEvent(
                               TJSNativeInstance, _LastMouseX, _LastMouseY,
                               TVPGetCurrentShiftKeyState()),
@@ -954,7 +964,13 @@ public:
 
     const char *GetCaption() override { return _caption.c_str(); }
 
-    void SetCaption(const std::string &s) override { _caption = s; }
+    void SetCaption(const std::string &s) override {
+        if(_caption == s)
+            return;
+        _caption = s;
+        if(const auto host = TVPGetEmbeddedSessionHost())
+            host->set_caption(host->context, this, s);
+    }
 
     void ResetDrawSprite() {
         if(DrawSprite) {
@@ -1096,6 +1112,8 @@ public:
     void UpdateDrawBuffer(iTVPTexture2D *tex) override {
         if(!tex)
             return;
+        if(const auto host = TVPGetEmbeddedSessionHost())
+            host->frame_ready(host->context, TJSNativeInstance, tex, LayerWidth, LayerHeight);
 #if defined(KRKR2_WASMTIME_HEADLESS)
         motion::detail::motionTraceRecordPostDrawCanvasTexture(
             tex, "TVPWindowLayer::UpdateDrawBuffer");
@@ -2425,16 +2443,7 @@ void TVPMainScene::onKeyPressed(EventKeyboard::KeyCode keyCode, Event *event) {
         default:
             break;
     }
-    unsigned int code = TVPConvertKeyCodeToVKCode(keyCode);
-    if(!code || code >= 0x200)
-        return;
-    code = _keymap[code];
-
-    _scancode[code] = 0x11;
-    if(_currentWindowLayer) {
-        _currentWindowLayer->InternalKeyDown(code,
-                                             TVPGetCurrentShiftKeyState());
-    }
+    TVPDispatchWindowKey(TVPConvertKeyCodeToVKCode(keyCode), true);
 }
 
 void TVPMainScene::onKeyReleased(EventKeyboard::KeyCode keyCode, Event *event) {
@@ -2484,15 +2493,7 @@ void TVPMainScene::onKeyReleased(EventKeyboard::KeyCode keyCode, Event *event) {
         }
         global->Release();
     }
-    unsigned int code = TVPConvertKeyCodeToVKCode(keyCode);
-    if(!code || code >= 0x200)
-        return;
-    code = _keymap[code];
-    bool isPressed = _scancode[code] & 1;
-    _scancode[code] &= 0x10;
-    if(isPressed && _currentWindowLayer) {
-        _currentWindowLayer->OnKeyUp(code, TVPGetCurrentShiftKeyState());
-    }
+    TVPDispatchWindowKey(TVPConvertKeyCodeToVKCode(keyCode), false);
 }
 
 TVPMainScene::TVPMainScene() {
@@ -2829,15 +2830,7 @@ void TVPMainScene::onPadKeyDown(cocos2d::Controller *ctrl, int keyCode,
 #if !defined(__EMSCRIPTEN__)
     if(!UINode->getChildren().empty())
         return;
-    unsigned int code = TVPConvertPadKeyCodeToVKCode(keyCode);
-    if(!code || code >= 0x200)
-        return;
-    code = _keymap[code];
-    _scancode[code] = 0x11;
-    if(_currentWindowLayer) {
-        _currentWindowLayer->InternalKeyDown(code,
-                                             TVPGetCurrentShiftKeyState());
-    }
+    TVPDispatchWindowKey(TVPConvertPadKeyCodeToVKCode(keyCode), true);
 #else
     (void)ctrl;
     (void)keyCode;
@@ -2848,15 +2841,7 @@ void TVPMainScene::onPadKeyDown(cocos2d::Controller *ctrl, int keyCode,
 void TVPMainScene::onPadKeyUp(cocos2d::Controller *ctrl, int keyCode,
                               cocos2d::Event *e) {
 #if !defined(__EMSCRIPTEN__)
-    unsigned int code = TVPConvertPadKeyCodeToVKCode(keyCode);
-    if(!code || code >= 0x200)
-        return;
-    code = _keymap[code];
-    bool isPressed = _scancode[code] & 1;
-    _scancode[code] &= 0x10;
-    if(isPressed && _currentWindowLayer) {
-        _currentWindowLayer->OnKeyUp(code, TVPGetCurrentShiftKeyState());
-    }
+    TVPDispatchWindowKey(TVPConvertPadKeyCodeToVKCode(keyCode), false);
 #else
     (void)ctrl;
     (void)keyCode;
@@ -3000,3 +2985,45 @@ ttstr TVPGetPlatformName() {
 }
 
 ttstr TVPGetOSName() { return TVPGetPlatformName(); }
+
+tTJSNI_Window *TVPGetCurrentWindowNative() {
+    return _currentWindowLayer ? _currentWindowLayer->GetWindow() : nullptr;
+}
+
+void TVPDispatchWindowKey(unsigned int code, bool pressed) {
+    if(!code || code >= std::size(_keymap))
+        return;
+    code = _keymap[code];
+    if(pressed) {
+        _scancode[code] = 0x11;
+        if(_currentWindowLayer)
+            _currentWindowLayer->InternalKeyDown(code, TVPGetCurrentShiftKeyState());
+    } else {
+        const bool wasPressed = _scancode[code] & 1;
+        _scancode[code] &= 0x10;
+        if(wasPressed && _currentWindowLayer)
+            _currentWindowLayer->OnKeyUp(code, TVPGetCurrentShiftKeyState());
+    }
+}
+
+
+void TVPDispatchWindowPointerMove(float x, float y) {
+    if(_currentWindowLayer)
+        _currentWindowLayer->onMouseMove(static_cast<int>(x), static_cast<int>(y));
+}
+
+void TVPDispatchWindowPointerButton(int button, bool pressed, float x, float y) {
+    if(!_currentWindowLayer || button < mbLeft || button > mbX2)
+        return;
+    _mouseBtn = static_cast<tTVPMouseButton>(button);
+    if(pressed)
+        _currentWindowLayer->onMouseDown(static_cast<int>(x), static_cast<int>(y));
+    else
+        _currentWindowLayer->onMouseUp(static_cast<int>(x), static_cast<int>(y), button == mbLeft);
+}
+
+void TVPDispatchWindowWheel(int delta, float x, float y) {
+    if(_currentWindowLayer)
+        _currentWindowLayer->GetWindow()->OnMouseWheel(
+            TVPGetCurrentShiftKeyState(), delta, static_cast<int>(x), static_cast<int>(y));
+}

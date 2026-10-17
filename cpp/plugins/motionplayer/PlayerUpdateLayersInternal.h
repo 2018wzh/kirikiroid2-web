@@ -430,16 +430,17 @@ namespace {
         // the base comes from a copied Variant, while each nested accessor is
         // constructed from the temporary Variant returned by GetValue.
         ncbPropAccessor object{tTJSVariant(emoteEditVariant)};
+        ncbPropAccessor::IndexT firstIndex = 0;
         ncbPropAccessor coord{object.GetValue(
             TJS_W("coord"), ncbTypedefs::Tag<tTJSVariant>(), 0, nullptr)};
         (void)coord.SetValue(
-            static_cast<tjs_int32>(0), coordX, TJS_MEMBERENSURE);
+            firstIndex, coordX, TJS_MEMBERENSURE);
         (void)coord.SetValue(1, coordY, TJS_MEMBERENSURE);
 
         ncbPropAccessor matrix{object.GetValue(
             TJS_W("mtx"), ncbTypedefs::Tag<tTJSVariant>(), 0, nullptr)};
         (void)matrix.SetValue(
-            static_cast<tjs_int32>(0), m11, TJS_MEMBERENSURE);
+            firstIndex, m11, TJS_MEMBERENSURE);
         (void)matrix.SetValue(1, m12, TJS_MEMBERENSURE);
         (void)matrix.SetValue(2, m21, TJS_MEMBERENSURE);
         (void)matrix.SetValue(3, m22, TJS_MEMBERENSURE);

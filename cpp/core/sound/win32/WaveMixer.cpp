@@ -1,5 +1,7 @@
 #include "WaveMixer.h"
 #include "tjsCommHead.h"
+#include "../../environ/EmbeddedAudio.h"
+#include <stdexcept>
 
 #ifdef __APPLE__
 #include <OpenAL/al.h>
@@ -536,8 +538,8 @@ public:
     }
 
     ~tTVPSoundBufferAL() override {
-        alDeleteBuffers(_bufferCount, _bufferIds);
         alDeleteSources(1, &_alSource);
+        alDeleteBuffers(_bufferCount, _bufferIds);
         delete[] _bufferIds;
         delete[] _bufferIds2;
         delete[] _bufferSize;
@@ -726,9 +728,12 @@ public:
 class tTVPAudioRendererAL : public iTVPAudioRenderer {
     ALCdevice *_device = nullptr;
     ALCcontext *_context = nullptr;
+    bool _borrowedContext = false;
 
 public:
     virtual ~tTVPAudioRendererAL() {
+        if(_borrowedContext)
+            return;
         if(_context) {
             // alDeleteSources(TVP_MAX_AUDIO_COUNT, _alSources);
             alcMakeContextCurrent(nullptr);
@@ -739,6 +744,15 @@ public:
     }
 
     bool Init() override {
+        if(const auto embedded = TVPGetEmbeddedAudioContext()) {
+            if(alcGetContextsDevice(embedded->context) != embedded->device ||
+               alcGetCurrentContext() != embedded->context)
+                throw std::runtime_error("embedded OpenAL context is not current");
+            _device = embedded->device;
+            _context = embedded->context;
+            _borrowedContext = true;
+            return true;
+        }
         ALboolean enumeration =
             alcIsExtensionPresent(nullptr, "ALC_ENUMERATION_EXT");
         if(enumeration == AL_FALSE) {
@@ -773,7 +787,23 @@ public:
     }
 
     ALCcontext *GetContext() { return _context; }
+
+    void ReleaseEmbedded() {
+        if(!_borrowedContext || !_streams.empty())
+            throw std::runtime_error("embedded OpenAL renderer still owns live streams");
+        delete this;
+    }
 };
+
+void TVPReleaseEmbeddedAudioRenderer() {
+    if(!TVPAudioRenderer)
+        return;
+    auto renderer = dynamic_cast<tTVPAudioRendererAL *>(TVPAudioRenderer);
+    if(!TVPGetEmbeddedAudioContext() || !renderer)
+        throw std::runtime_error("audio renderer is not the embedded OpenAL renderer");
+    renderer->ReleaseEmbedded();
+    TVPAudioRenderer = nullptr;
+}
 
 void tTVPSoundBufferAL::checkerr(const char *funcname) {
 #if _DEBUG

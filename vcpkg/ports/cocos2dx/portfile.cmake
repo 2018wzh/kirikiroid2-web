@@ -53,6 +53,7 @@ file(COPY_FILE "${CMAKE_CURRENT_LIST_DIR}/patch/cocos2d-x/cocos/cocos2d.h" "${SO
 file(COPY_FILE "${CMAKE_CURRENT_LIST_DIR}/patch/cocos2d-x/cocos/base/allocator/CCAllocatorMutex.h" "${SOURCE_PATH}/cocos/base/allocator/CCAllocatorMutex.h" ONLY_IF_DIFFERENT)
 file(COPY_FILE "${CMAKE_CURRENT_LIST_DIR}/patch/cocos2d-x/cocos/base/CCEventListenerController.cpp" "${SOURCE_PATH}/cocos/base/CCEventListenerController.cpp" ONLY_IF_DIFFERENT)
 file(COPY_FILE "${CMAKE_CURRENT_LIST_DIR}/patch/cocos2d-x/cocos/base/CCConfiguration.cpp" "${SOURCE_PATH}/cocos/base/CCConfiguration.cpp" ONLY_IF_DIFFERENT)
+file(COPY_FILE "${CMAKE_CURRENT_LIST_DIR}/patch/cocos2d-x/cocos/base/pvr.h" "${SOURCE_PATH}/cocos/base/pvr.h" ONLY_IF_DIFFERENT)
 
 # Copy audio CMakeLists, AudioEngine.cpp, and Emscripten audio implementation
 file(COPY_FILE "${CMAKE_CURRENT_LIST_DIR}/patch/cocos2d-x/cocos/audio/CMakeLists.txt" "${SOURCE_PATH}/cocos/audio/CMakeLists.txt" ONLY_IF_DIFFERENT)
@@ -63,6 +64,15 @@ file(COPY "${CMAKE_CURRENT_LIST_DIR}/patch/cocos2d-x/cocos/audio/emscripten/" DE
 file(COPY "${CMAKE_CURRENT_LIST_DIR}/patch/cocos2d-x/cocos/platform/emscripten/" DESTINATION "${SOURCE_PATH}/cocos/platform/emscripten/")
 
 include("${CMAKE_CURRENT_LIST_DIR}/DownloadDeps.cmake")
+
+# The bundled minizip is static; zlib's DLL import attribute belongs only to
+# zlib declarations, not these separate namespace-local function definitions.
+foreach(_unzip_file unzip.h unzip.cpp)
+    set(_unzip_path "${SOURCE_PATH}/external/unzip/${_unzip_file}")
+    file(READ "${_unzip_path}" _unzip_source)
+    string(REPLACE "ZEXTERN " "extern " _unzip_source "${_unzip_source}")
+    file(WRITE "${_unzip_path}" "${_unzip_source}")
+endforeach()
 
 file(COPY_FILE "${CMAKE_CURRENT_LIST_DIR}/patch/cocos2d-x/external/CMakeLists.txt" "${SOURCE_PATH}/external/CMakeLists.txt" ONLY_IF_DIFFERENT)
 file(COPY_FILE "${CMAKE_CURRENT_LIST_DIR}/patch/cocos2d-x/external/unzip/CMakeLists.txt" "${SOURCE_PATH}/external/unzip/CMakeLists.txt" ONLY_IF_DIFFERENT)
