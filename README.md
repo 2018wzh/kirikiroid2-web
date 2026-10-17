@@ -160,6 +160,8 @@ to that Director. Release the native audio renderer after its sources and worker
 The optional `KRKR2_EMBEDDED_ADAPTER_DIR` supplies host platform/presentation
 endpoints without replacing the VM, OpenGL, FFmpeg, OpenAL or compiled plugins.
 Game save locations and per-game preferences retain their original semantics.
+The application-path cache also expires with the owner thread, so opening a
+different game cannot retain the previous game's save/plugin search root.
 
 ---
 
