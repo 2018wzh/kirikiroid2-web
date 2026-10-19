@@ -1,9 +1,3 @@
-# libbpg uses the pinned native ff_hevc_decoder data symbol, which is not part
-# of FFmpeg's public DLL exports. Keep this decoder in the native link image.
-if(VCPKG_TARGET_IS_WINDOWS)
-    vcpkg_check_linkage(ONLY_STATIC_LIBRARY)
-endif()
-
 vcpkg_from_github(
     OUT_SOURCE_PATH SOURCE_PATH
     REPO ffmpeg/ffmpeg
