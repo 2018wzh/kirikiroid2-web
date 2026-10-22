@@ -335,6 +335,11 @@ if(APPLE AND NOT EMSCRIPTEN)
     target_link_libraries(${PROJECT_NAME} PUBLIC
         -Wl,-force_load,$<TARGET_FILE:krkr2plugins_ncbind>
     )
+elseif(MSVC)
+    target_link_libraries(${PROJECT_NAME} PUBLIC krkr2plugins_ncbind)
+    target_link_options(${PROJECT_NAME} PRIVATE
+        "/WHOLEARCHIVE:$<TARGET_FILE:krkr2plugins_ncbind>"
+    )
 else()
     target_link_libraries(${PROJECT_NAME} PUBLIC
         -Wl,--whole-archive krkr2plugins_ncbind -Wl,--no-whole-archive
@@ -385,4 +390,10 @@ endif()
 
 if(BUILD_TOOLS AND NOT (IOS OR ANDROID OR WEB))
     add_subdirectory(tools)
+endif()
+
+# AstraEMU C ABI v3 adapter DLL; the standalone executable is unchanged.
+option(KRKR2_ASTRA_EMU "build the AstraEMU core library (Windows x64/MSVC)" OFF)
+if(KRKR2_ASTRA_EMU)
+    add_subdirectory(astra/native "${CMAKE_CURRENT_BINARY_DIR}/astra")
 endif()

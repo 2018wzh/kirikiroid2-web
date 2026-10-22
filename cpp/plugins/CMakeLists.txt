@@ -66,6 +66,10 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/layerExImage/Main.cpp" AND
         layerExImage/LayerExImage.cpp
         PROPERTIES COMPILE_DEFINITIONS "NCB_MODULE_NAME=TJS_W(\"layerExImage.dll\")"
     )
+    if(MSVC)
+        set_property(SOURCE layerExImage/LayerExImage.cpp APPEND PROPERTY
+            COMPILE_OPTIONS /FIwindows.h /DNOMINMAX /DWIN32_LEAN_AND_MEAN)
+    endif()
 else()
     message(STATUS "layerExImage submodule is absent; skipping layerExImage plugin sources")
 endif()

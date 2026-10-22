@@ -137,6 +137,33 @@ You can also pass game sources via URL query parameters directly:
 openssl req -x509 -newkey rsa:2048 -keyout server.key -out server.crt -days 365 -nodes
 ```
 
+## Reusable native sessions
+
+The native core supports sequential sessions in one resident library. Each
+session uses a fresh owner thread; close joins that owner and its image, wave,
+timer, graphics-preload and binary-stream workers before a new session starts.
+Renderer/uniform lookup caches belong to the owner thread, not to a process-wide
+GL context. Do not reuse a closed owner thread for a different context.
+
+`TVPBeginSystemSession` resets shutdown state before application startup.
+`TVPSystemUninit` closes event publication, drains callbacks, invalidates registered
+window owners (including script/native reference cycles), unregisters loaded
+plugins and destroys the VM. Cancelled script finalizers still invalidate their
+native instances. Shutdown registrars remain registered for subsequent sessions.
+The optional `tjsExecutionControl.h` cancellation callback covers worker VMs too;
+remove it only after every native worker has joined.
+
+Keep the original GL context current while releasing scene references, call
+`TVPUninitUIExtension`, recycle textures and release render managers, then destroy
+the Director/context. The UI loader must not outlive the ObjectFactory belonging
+to that Director. Release the native audio renderer after its sources and workers.
+The optional `KRKR2_ASTRA_EMU` CMake option builds the AstraEMU core library
+from [`astra/`](./astra/README.md); it supplies host platform/presentation
+endpoints without replacing the VM, OpenGL, FFmpeg, OpenAL or compiled plugins.
+Game save locations and per-game preferences retain their original semantics.
+The application-path cache also expires with the owner thread, so opening a
+different game cannot retain the previous game's save/plugin search root.
+
 ---
 
 ## TODO

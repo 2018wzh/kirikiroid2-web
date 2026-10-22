@@ -303,12 +303,10 @@ void layerExMovie::onUpdate() {
                        _clipTop + _clipHeight);
         iTVPRenderMethod *method;
         if(alpha) {
-            static iTVPRenderMethod *_method =
-                TVPGetRenderManager()->GetRenderMethod("CopyColor");
+            static thread_local iTVPRenderMethod *_method = TVPGetRenderManager()->GetRenderMethod("CopyColor");
             method = _method;
         } else {
-            static iTVPRenderMethod *_method =
-                TVPGetRenderManager()->GetRenderMethod("Copy");
+            static thread_local iTVPRenderMethod *_method = TVPGetRenderManager()->GetRenderMethod("Copy");
             method = _method;
         }
         tRenderTexRectArray::Element src_tex[] = { tRenderTexRectArray::Element(

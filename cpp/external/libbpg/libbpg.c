@@ -342,8 +342,6 @@ static int dyn_buf_push(DynBuf *s, const uint8_t *data, int len)
     return 0;
 }
 
-extern AVCodec ff_hevc_decoder;
-
 static int hevc_decode_init1(DynBuf *pbuf, AVFrame **pframe,
                              AVCodecContext **pc, 
                              const uint8_t *buf, int buf_len,
@@ -365,7 +363,9 @@ static int hevc_decode_init1(DynBuf *pbuf, AVFrame **pframe,
     if (ret1 < 0)
         return -1;
     
-    codec = &ff_hevc_decoder;
+    codec = avcodec_find_decoder_by_name("hevc");
+    if (!codec)
+        return -1;
 
     c = avcodec_alloc_context3(codec);
     if (!c) 

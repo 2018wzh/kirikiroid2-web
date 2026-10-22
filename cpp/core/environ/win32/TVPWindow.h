@@ -3,6 +3,7 @@
 #define __TVP_WINDOW_H__
 
 #include <string>
+#include "../EmbeddedSession.h"
 #if 0
 #include <shellapi.h>
 #include <oleidl.h> // for MK_ALT
@@ -324,6 +325,7 @@ protected:
     tjs_int ZoomDenom = 1; // Zooming factor denominator (setting)
     tjs_int ZoomNumer = 1; // Zooming factor numerator (setting)
     double TouchScaleThreshold = 5, TouchRotateThreshold = 5;
+    bool EmbeddedFullScreen = false;
 
 public:
     virtual void SetPaintBoxSize(tjs_int w, tjs_int h) = 0;
@@ -399,7 +401,11 @@ public:
     void SetPosition(tjs_int, tjs_int) {}
     void SetBorderStyle(tTVPBorderStyle) {}
     void SetStayOnTop(bool) {}
-    void SetFullScreenMode(bool) {}
+    void SetFullScreenMode(bool fullscreen) {
+        if(const auto host = TVPGetEmbeddedSessionHost()) {
+            EmbeddedFullScreen = host->set_fullscreen(host->context, this, fullscreen);
+        }
+    }
     tjs_int GetLeft() { return 0; }
     tjs_int GetTop() { return 0; }
     tjs_int GetMinWidth() { return 0; }
@@ -409,7 +415,7 @@ public:
     tjs_int GetInnerWidth() { return GetWidth(); }
     tjs_int GetInnerHeight() { return GetHeight(); }
     bool GetStayOnTop() { return false; }
-    bool GetFullScreenMode() { return false; }
+    bool GetFullScreenMode() { return TVPGetEmbeddedSessionHost() && EmbeddedFullScreen; }
     [[nodiscard]] tTVPBorderStyle GetBorderStyle() const { return bsNone; }
     void SetTrapKey(bool b) {}
     [[nodiscard]] bool GetTrapKey() const { return false; }

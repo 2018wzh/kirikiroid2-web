@@ -3,6 +3,7 @@
 #include <stdexcept>
 #include "MsgIntf.h"
 #include "ThreadImpl.h"
+#include "tjsError.h"
 
 NS_KRMOVIE_BEGIN
 
@@ -83,16 +84,22 @@ bool CThread::IsCurrentThread() {
 }
 
 int CThread::entry() {
-    // OnExit completes before m_bRunning becomes false and before a joining
-    // StopThread returns.  There is no equivalent sequence without Create().
-    // There is also no exception boundary here: an exception escaping Process
-    // (for example, allocation failure in a worker Ended callback) prevents
-    // OnExit and escapes the std::thread entry, which terminates the process.
-    OnStartup();
-    Process();
-    OnExit();
+    // Preserve the worker failure for owner teardown, while always running OnExit
+    // and joining. A cancelled worker VM must not terminate the embedding process.
+    try {
+        OnStartup();
+        Process();
+    } catch(const TJS::eTJSSilent &) {
+        m_bStop = true;
+    } catch(...) {
+        m_bStop = true;
+        TVPRecordWorkerFailure(std::current_exception());
+    }
+    try { OnExit(); }
+    catch(...) { TVPRecordWorkerFailure(std::current_exception()); }
     m_bRunning = false;
-    TVPOnThreadExited();
+    try { TVPOnThreadExited(); }
+    catch(...) { TVPRecordWorkerFailure(std::current_exception()); }
     return 0;
 }
 

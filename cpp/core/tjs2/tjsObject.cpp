@@ -396,8 +396,13 @@ namespace TJS {
     void tTJSCustomObject::Finalize() {
         // call this object's "finalize"
         if(CallFinalize) {
-            FuncCall(0, finalize_name.c_str(), finalize_name.GetHint(), nullptr,
-                     0, nullptr, this);
+            try {
+                FuncCall(0, finalize_name.c_str(), finalize_name.GetHint(), nullptr,
+                         0, nullptr, this);
+            } catch(const eTJSSilent &) {
+                // VM cancellation stops script finalizers, not native ownership
+                // teardown. Every native instance still receives Invalidate.
+            }
         }
 
         // Match destruction order: later slots are invalidated first.

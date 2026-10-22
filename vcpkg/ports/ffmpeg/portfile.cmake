@@ -24,6 +24,14 @@ endif()
 
 set(OPTIONS "--enable-pic --disable-doc --enable-debug=3 --enable-runtime-cpudetect")
 
+if(VCPKG_HOST_IS_WINDOWS AND
+   (VCPKG_TARGET_ARCHITECTURE STREQUAL "x86" OR VCPKG_TARGET_ARCHITECTURE STREQUAL "x64"))
+    find_program(FFMPEG_YASM NAMES yasm
+        PATHS "${CURRENT_HOST_INSTALLED_DIR}/tools/yasm" "${CURRENT_INSTALLED_DIR}/tools/yasm"
+        NO_DEFAULT_PATH REQUIRED)
+    string(APPEND OPTIONS " --yasmexe=\"${FFMPEG_YASM}\"")
+endif()
+
 if(VCPKG_TARGET_IS_MINGW)
     if(VCPKG_TARGET_ARCHITECTURE STREQUAL "x86")
         string(APPEND OPTIONS " --target-os=mingw32")
@@ -430,6 +438,19 @@ if(VCPKG_TARGET_IS_WINDOWS)
     endif()
 endif()
 
+# FFmpeg's MSVC static archive is named lib*.a even though lib.exe produces
+# COFF archives. Match the existing Windows FindFFMPEG/pkg-config names.
+if(VCPKG_DETECTED_MSVC AND VCPKG_LIBRARY_LINKAGE STREQUAL "static")
+    foreach(_lib_dir "${CURRENT_PACKAGES_DIR}/lib" "${CURRENT_PACKAGES_DIR}/debug/lib")
+        file(GLOB _static_archives "${_lib_dir}/lib*.a")
+        foreach(_archive IN LISTS _static_archives)
+            get_filename_component(_archive_name "${_archive}" NAME_WE)
+            string(REGEX REPLACE "^lib" "" _library_name "${_archive_name}")
+            file(RENAME "${_archive}" "${_lib_dir}/${_library_name}.lib")
+        endforeach()
+    endforeach()
+endif()
+
 file(REMOVE_RECURSE "${CURRENT_PACKAGES_DIR}/debug/include" "${CURRENT_PACKAGES_DIR}/debug/share")
 
 if(VCPKG_LIBRARY_LINKAGE STREQUAL "static")
@@ -470,7 +491,13 @@ vcpkg_fixup_pkgconfig()
 
 # Handle dependencies
 
-x_vcpkg_pkgconfig_get_modules(PREFIX FFMPEG_PKGCONFIG MODULES ${FFMPEG_PKGCONFIG_MODULES} LIBS)
+set(_ffmpeg_pkgconfig_modules ${FFMPEG_PKGCONFIG_MODULES})
+if(VCPKG_LIBRARY_LINKAGE STREQUAL "static")
+    # This helper forwards MODULES to pkgconf; include Libs.private for the
+    # native static link (bzip2/lzma/Schannel), not just public DLL dependencies.
+    list(APPEND _ffmpeg_pkgconfig_modules --static)
+endif()
+x_vcpkg_pkgconfig_get_modules(PREFIX FFMPEG_PKGCONFIG MODULES ${_ffmpeg_pkgconfig_modules} LIBS)
 
 function(append_dependencies_from_libs out)
     cmake_parse_arguments(PARSE_ARGV 1 "arg" "" "LIBS" "")

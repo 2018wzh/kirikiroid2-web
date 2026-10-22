@@ -1,4 +1,7 @@
 #include "Platform.h"
+#include "EmbeddedModal.h"
+#include "EmbeddedSession.h"
+#include "Exception.h"
 #include "cocos2d/MainScene.h"
 // #undef WIN32
 #include <windows.h>
@@ -14,6 +17,8 @@
 #include <sys/utime.h>
 #include <boost/locale.hpp>
 #include <spdlog/spdlog.h>
+#include <memory>
+#include <system_error>
 
 #pragma comment(lib, "psapi.lib")
 
@@ -91,23 +96,30 @@ void TVPCheckAndSendDumps(const std::string &dumpdir,
                           const std::string &packageName,
                           const std::string &versionStr);
 bool TVPCheckStartupArg() {
-    int argc;
-    const std::u16string argv = boost::locale::conv::utf_to_utf<char16_t>(
-        *CommandLineToArgvW(GetCommandLineW(), &argc));
-    //	__wgetmainargs(&argc, &argv, &env, 0, &info);
+    int argc = 0;
+    const std::unique_ptr<LPWSTR, decltype(&LocalFree)> argv(
+        CommandLineToArgvW(GetCommandLineW(), &argc), &LocalFree);
+    if(!argv) {
+        throw std::system_error(static_cast<int>(GetLastError()),
+                                std::system_category(), "CommandLineToArgvW");
+    }
     TVPCheckAndSendDumps(TVPGetDefaultFileDir() + "/dumps", "win32-test",
                          "test");
     if(argc > 1) {
-        if(TVPCheckExistentLocalFile(argv[1])) {
-            if(TVPCheckArchive(argv[1]) == 1) {
+        const std::u16string firstArg =
+            boost::locale::conv::utf_to_utf<char16_t>(argv.get()[1]);
+        std::string firstArgUtf8 =
+            boost::locale::conv::utf_to_utf<char>(firstArg);
+        if(TVPCheckExistentLocalFile(firstArg)) {
+            if(TVPCheckArchive(firstArg) == 1) {
                 TVPMainScene::GetInstance()->startupFrom(
-                    converter.to_bytes(argv[1]));
+                    firstArgUtf8);
                 return true;
             }
             return false;
         }
         bool bootable = false;
-        TVPListDir(converter.to_bytes(argv[1]),
+        TVPListDir(firstArgUtf8,
                    [&](const std::string &_name, int mask) {
                        if(mask & (S_IFREG)) {
                            std::string name(_name);
@@ -123,26 +135,52 @@ bool TVPCheckStartupArg() {
                        }
                    });
         for(int i = 2; i < argc; ++i) {
-            std::u16string str{ argv[i] };
+            std::u16string str =
+                boost::locale::conv::utf_to_utf<char16_t>(argv.get()[i]);
             size_t pos = str.find(u'=');
             if(pos == str.npos) {
-                TVPSetCommandLine(ttstr{ argv[i] }.c_str(), "yes"_tss);
+                TVPSetCommandLine(str.c_str(), "yes"_tss);
             } else {
                 ttstr val = str.c_str() + pos + 1;
                 TVPSetCommandLine(str.substr(0, pos).c_str(), val);
             }
         }
         if(bootable) {
+            // The selector denotes a game directory with a trailing separator.
+            // Keep its per-game preference and save roots inside that directory.
+            if(!firstArgUtf8.empty() && firstArgUtf8.back() != '/' &&
+               firstArgUtf8.back() != '\\') {
+                firstArgUtf8 += '/';
+            }
             TVPMainScene::GetInstance()->startupFrom(
-                converter.to_bytes(argv[1]));
+                firstArgUtf8);
             return true;
         }
     }
     return false;
 }
 
+static int TVPRequestEmbeddedModal(const TVPEmbeddedModalHost &host,
+                                   const ttstr &caption, const ttstr &message,
+                                   const std::vector<ttstr> &buttons,
+                                   ttstr *input) {
+    std::vector<std::string> labels;
+    labels.reserve(buttons.size());
+    for(const auto &button : buttons)
+        labels.push_back(button.AsStdString());
+    std::string text = input ? input->AsStdString() : std::string{};
+    const int result = host.request(host.context, caption.AsStdString(),
+                                    message.AsStdString(), labels,
+                                    input ? &text : nullptr);
+    if(result >= 0 && input)
+        *input = ttstr(text);
+    return result;
+}
+
 int TVPShowSimpleMessageBox(const ttstr &text, const ttstr &caption,
                             const std::vector<ttstr> &vecButtons) {
+    if(const auto host = TVPGetEmbeddedModalHost())
+        return TVPRequestEmbeddedModal(*host, caption, text, vecButtons, nullptr);
     // there has no implement under android
     switch(vecButtons.size()) {
         case 1:
@@ -293,6 +331,10 @@ std::string TVPGetCurrentLanguage() {
 extern tTJS *TVPScriptEngine;
 void TVPReleaseFontLibrary();
 void TVPExitApplication(int code) {
+    if(const auto host = TVPGetEmbeddedSessionHost()) {
+        host->request_exit(host->context, code);
+        throw EAbort(TJS_W("embedded session exit"));
+    }
     // clear some static data for memory leak detect
     TVPDeliverCompactEvent(TVP_COMPACT_LEVEL_MAX);
     if(!TVPIsSoftwareRenderManager())
@@ -400,6 +442,8 @@ bool TVP_utime(const char *name, time_t modtime) {
 int TVPShowSimpleInputBox(ttstr &text, const ttstr &caption,
                           const ttstr &prompt,
                           const std::vector<ttstr> &vecButtons) {
+    if(const auto host = TVPGetEmbeddedModalHost())
+        return TVPRequestEmbeddedModal(*host, caption, prompt, vecButtons, &text);
     spdlog::get("core")->warn(
         "windows platform simple input box not implement");
     return 0;
