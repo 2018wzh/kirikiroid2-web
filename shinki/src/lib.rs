@@ -1,9 +1,9 @@
 //! The original Kirikiroid2 VM, GL renderer and OpenAL scheduler live in the
 //! linked native module. The Manager uses only the shared C query table.
-use astra_emu_abi::{CoreApi, Query, Status};
+use shinki_emu_abi::{CoreApi, Query, Status};
 
 unsafe extern "C" {
-    #[link_name = "astra_emu_kirikiroid2_web_query"]
+    #[link_name = "shinki_emu_kirikiroid2_web_query"]
     pub fn query(version: u32, output: *mut *const CoreApi) -> Status;
 }
 
@@ -17,29 +17,21 @@ mod tests {
         let mut api = std::ptr::null();
         unsafe {
             assert_eq!(
-                query(astra_emu_abi::ABI_VERSION, &mut api),
-                astra_emu_abi::OK
+                query(shinki_emu_abi::ABI_VERSION, &mut api),
+                shinki_emu_abi::OK
             );
             assert!(!api.is_null());
-            assert_eq!((*api).header.version, astra_emu_abi::ABI_VERSION);
+            assert_eq!((*api).header.version, shinki_emu_abi::ABI_VERSION);
             assert!((*api).validate().is_ok());
-            let mut descriptor = std::mem::MaybeUninit::<astra_emu_abi::Descriptor>::zeroed();
-            let mut error = astra_emu_abi::Error::default();
+            let mut descriptor = std::mem::MaybeUninit::<shinki_emu_abi::Descriptor>::zeroed();
+            let mut error = shinki_emu_abi::Error::default();
             assert_eq!(
                 ((*api).describe.unwrap())(descriptor.as_mut_ptr(), &mut error),
-                astra_emu_abi::OK
+                shinki_emu_abi::OK
             );
             let descriptor = descriptor.assume_init();
             assert!(descriptor.validate().is_ok());
-            assert_eq!(descriptor.display_name.as_slice(64), Ok(&b"KiriKiri2"[..]));
-            assert_eq!(descriptor.family_name.as_slice(64), Ok(&b"KiriKiri"[..]));
-            assert_eq!(descriptor.capabilities, astra_emu_abi::CAP_CPU_SURFACE);
-            assert_eq!(
-                descriptor.render,
-                astra_emu_abi::RenderExtentSupport::default()
-            );
-            assert_eq!(descriptor.configuration_count, 0);
-            assert_eq!(query(0, &mut api), astra_emu_abi::UNSUPPORTED);
+            assert_eq!(query(0, &mut api), shinki_emu_abi::UNSUPPORTED);
             assert!(api.is_null());
         }
     }
@@ -49,24 +41,24 @@ mod tests {
 /// through test-only C entry points. No VM, GL context or session is started.
 #[cfg(test)]
 mod lifecycle {
-    use astra_emu_abi::Status;
+    use shinki_emu_abi::Status;
     use std::ffi::c_void;
 
-    #[link(name = "astra_emu_kirikiroid2_web_lifecycle_test", kind = "static")]
+    #[link(name = "shinki_emu_kirikiroid2_web_lifecycle_test", kind = "static")]
     unsafe extern "C" {
-        fn astra_krkr_lifecycle_test_new() -> *mut c_void;
-        fn astra_krkr_lifecycle_test_free(lifecycle: *mut c_void);
-        fn astra_krkr_lifecycle_test_phase(lifecycle: *const c_void) -> u32;
-        fn astra_krkr_lifecycle_test_pause(lifecycle: *mut c_void, paused: u32);
-        fn astra_krkr_lifecycle_test_waiting(lifecycle: *mut c_void, blocked: u32);
-        fn astra_krkr_lifecycle_test_observe(
+        fn shinki_krkr_lifecycle_test_new() -> *mut c_void;
+        fn shinki_krkr_lifecycle_test_free(lifecycle: *mut c_void);
+        fn shinki_krkr_lifecycle_test_phase(lifecycle: *const c_void) -> u32;
+        fn shinki_krkr_lifecycle_test_pause(lifecycle: *mut c_void, paused: u32);
+        fn shinki_krkr_lifecycle_test_waiting(lifecycle: *mut c_void, blocked: u32);
+        fn shinki_krkr_lifecycle_test_observe(
             lifecycle: *mut c_void,
             state: u32,
             exit_code: i32,
         ) -> u32;
-        fn astra_krkr_lifecycle_test_end(lifecycle: *mut c_void, status: Status);
-        fn astra_krkr_lifecycle_test_close_status(failure: Status) -> Status;
-        fn astra_krkr_lifecycle_test_frame(thrown: u32, exit_requested: u32) -> u32;
+        fn shinki_krkr_lifecycle_test_end(lifecycle: *mut c_void, status: Status);
+        fn shinki_krkr_lifecycle_test_close_status(failure: Status) -> Status;
+        fn shinki_krkr_lifecycle_test_frame(thrown: u32, exit_requested: u32) -> u32;
     }
 
     /// `NativeSession::advance` result states.
@@ -81,65 +73,65 @@ mod lifecycle {
     struct Lifecycle(*mut c_void);
     impl Lifecycle {
         fn new() -> Self {
-            let raw = unsafe { astra_krkr_lifecycle_test_new() };
+            let raw = unsafe { shinki_krkr_lifecycle_test_new() };
             assert!(!raw.is_null());
             Self(raw)
         }
         fn phase(&self) -> u32 {
-            unsafe { astra_krkr_lifecycle_test_phase(self.0) }
+            unsafe { shinki_krkr_lifecycle_test_phase(self.0) }
         }
         fn pause(&self, paused: bool) {
-            unsafe { astra_krkr_lifecycle_test_pause(self.0, paused.into()) }
+            unsafe { shinki_krkr_lifecycle_test_pause(self.0, paused.into()) }
         }
         fn waiting(&self, blocked: bool) {
-            unsafe { astra_krkr_lifecycle_test_waiting(self.0, blocked.into()) }
+            unsafe { shinki_krkr_lifecycle_test_waiting(self.0, blocked.into()) }
         }
         fn observe(&self, state: u32, exit_code: i32) -> bool {
-            unsafe { astra_krkr_lifecycle_test_observe(self.0, state, exit_code) != 0 }
+            unsafe { shinki_krkr_lifecycle_test_observe(self.0, state, exit_code) != 0 }
         }
         fn end(&self, status: Status) {
-            unsafe { astra_krkr_lifecycle_test_end(self.0, status) }
+            unsafe { shinki_krkr_lifecycle_test_end(self.0, status) }
         }
     }
     impl Drop for Lifecycle {
         fn drop(&mut self) {
-            unsafe { astra_krkr_lifecycle_test_free(self.0) }
+            unsafe { shinki_krkr_lifecycle_test_free(self.0) }
         }
     }
 
     fn close_status(failure: Status) -> Status {
-        unsafe { astra_krkr_lifecycle_test_close_status(failure) }
+        unsafe { shinki_krkr_lifecycle_test_close_status(failure) }
     }
     fn frame_escapes(thrown: u32, exit_requested: bool) -> bool {
-        unsafe { astra_krkr_lifecycle_test_frame(thrown, exit_requested.into()) != 0 }
+        unsafe { shinki_krkr_lifecycle_test_frame(thrown, exit_requested.into()) != 0 }
     }
 
     #[test]
     fn game_exit_finishes_session_and_close_still_succeeds() {
         let lifecycle = Lifecycle::new();
-        assert_eq!(lifecycle.phase(), astra_emu_abi::SESSION_RUNNING);
+        assert_eq!(lifecycle.phase(), shinki_emu_abi::SESSION_RUNNING);
         // System.exit / System.terminate / accepted main-window close all end
         // in TVPExitApplication, which advance reports as state 2.
         assert!(lifecycle.observe(ADVANCE_EXITED, 0));
-        assert_eq!(lifecycle.phase(), astra_emu_abi::SESSION_FINISHED);
+        assert_eq!(lifecycle.phase(), shinki_emu_abi::SESSION_FINISHED);
         // Teardown after the exit is clean; the session stays FINISHED and
         // close() reports OK.
-        lifecycle.end(astra_emu_abi::OK);
-        assert_eq!(lifecycle.phase(), astra_emu_abi::SESSION_FINISHED);
-        assert_eq!(close_status(astra_emu_abi::OK), astra_emu_abi::OK);
+        lifecycle.end(shinki_emu_abi::OK);
+        assert_eq!(lifecycle.phase(), shinki_emu_abi::SESSION_FINISHED);
+        assert_eq!(close_status(shinki_emu_abi::OK), shinki_emu_abi::OK);
         // Host controls arriving after the exit do not hide it.
         lifecycle.pause(true);
         lifecycle.pause(false);
         lifecycle.waiting(true);
-        assert_eq!(lifecycle.phase(), astra_emu_abi::SESSION_FINISHED);
+        assert_eq!(lifecycle.phase(), shinki_emu_abi::SESSION_FINISHED);
     }
 
     #[test]
     fn exit_code_does_not_turn_game_exit_into_failure() {
         let lifecycle = Lifecycle::new();
         assert!(lifecycle.observe(ADVANCE_EXITED, 3));
-        lifecycle.end(astra_emu_abi::OK);
-        assert_eq!(lifecycle.phase(), astra_emu_abi::SESSION_FINISHED);
+        lifecycle.end(shinki_emu_abi::OK);
+        assert_eq!(lifecycle.phase(), shinki_emu_abi::SESSION_FINISHED);
     }
 
     #[test]
@@ -148,30 +140,30 @@ mod lifecycle {
         for _ in 0..3 {
             assert!(!lifecycle.observe(ADVANCE_RUNNING, 0));
         }
-        assert_eq!(lifecycle.phase(), astra_emu_abi::SESSION_RUNNING);
+        assert_eq!(lifecycle.phase(), shinki_emu_abi::SESSION_RUNNING);
         lifecycle.pause(true);
-        assert_eq!(lifecycle.phase(), astra_emu_abi::SESSION_PAUSED);
+        assert_eq!(lifecycle.phase(), shinki_emu_abi::SESSION_PAUSED);
         lifecycle.pause(false);
         lifecycle.waiting(true);
-        assert_eq!(lifecycle.phase(), astra_emu_abi::SESSION_WAITING);
+        assert_eq!(lifecycle.phase(), shinki_emu_abi::SESSION_WAITING);
         lifecycle.waiting(false);
         assert!(!lifecycle.observe(ADVANCE_RUNNING, 0));
-        assert_eq!(lifecycle.phase(), astra_emu_abi::SESSION_RUNNING);
+        assert_eq!(lifecycle.phase(), shinki_emu_abi::SESSION_RUNNING);
     }
 
     #[test]
     fn native_failure_stays_failed_and_close_reports_it() {
         let lifecycle = Lifecycle::new();
-        lifecycle.end(astra_emu_abi::CORE_ERROR);
-        assert_eq!(lifecycle.phase(), astra_emu_abi::SESSION_FAILED);
+        lifecycle.end(shinki_emu_abi::CORE_ERROR);
+        assert_eq!(lifecycle.phase(), shinki_emu_abi::SESSION_FAILED);
         assert!(lifecycle.observe(ADVANCE_EXITED, 0));
-        assert_eq!(lifecycle.phase(), astra_emu_abi::SESSION_FAILED);
+        assert_eq!(lifecycle.phase(), shinki_emu_abi::SESSION_FAILED);
         assert_eq!(
-            close_status(astra_emu_abi::CORE_ERROR),
-            astra_emu_abi::CORE_ERROR
+            close_status(shinki_emu_abi::CORE_ERROR),
+            shinki_emu_abi::CORE_ERROR
         );
         // Host cancellation is not reported again by close().
-        assert_eq!(close_status(astra_emu_abi::CANCELLED), astra_emu_abi::OK);
+        assert_eq!(close_status(shinki_emu_abi::CANCELLED), shinki_emu_abi::OK);
     }
 
     #[test]

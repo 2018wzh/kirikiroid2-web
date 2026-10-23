@@ -12,7 +12,7 @@
 #include <string>
 #include <utility>
 
-namespace astra::krkr {
+namespace shinki::krkr {
 static unsigned int key_code(std::uint32_t code) {
     if(code >= 1 && code <= 26) return 'A' + code - 1;
     if(code >= 27 && code <= 36) return '0' + code - 27;
@@ -33,13 +33,13 @@ static unsigned int key_code(std::uint32_t code) {
     case 87: return VK_OEM_COMMA; case 88: return VK_OEM_PERIOD; case 89: return VK_OEM_2;
     case 90: return VK_OEM_1; case 91: return VK_OEM_7;
     case 92: return VK_OEM_4; case 93: return VK_OEM_6; case 94: return VK_OEM_5; case 95: return VK_OEM_3;
-    default: throw std::runtime_error("ASTRA_KRKR_NATIVE_KEY_CODE");
+    default: throw std::runtime_error("SHINKI_EMU_KRKR_NATIVE_KEY_CODE");
     }
 }
 static void validate_position(float value) {
     if(!std::isfinite(value) || value < std::numeric_limits<int>::min() ||
        static_cast<double>(value) > std::numeric_limits<int>::max())
-        throw std::runtime_error("ASTRA_KRKR_NATIVE_POINTER_POSITION");
+        throw std::runtime_error("SHINKI_EMU_KRKR_NATIVE_POINTER_POSITION");
 }
 void NativeInput::key(unsigned int code, bool pressed, bool repeated) {
     if(!code) return;
@@ -60,11 +60,11 @@ void NativeInput::release() {
     wheel_ = 0;
 }
 bool NativeInput::take_reset_clock() noexcept { return std::exchange(reset_clock_, false); }
-void NativeInput::apply(const AstraKrkrEvent &event) {
+void NativeInput::apply(const ShinkiKrkrEvent &event) {
     switch(event.kind) {
     case 1: {
         if(event.key_state > 2 || event.modifiers > 15)
-            throw std::runtime_error("ASTRA_KRKR_NATIVE_KEY_STATE");
+            throw std::runtime_error("SHINKI_EMU_KRKR_NATIVE_KEY_STATE");
         const auto code = key_code(event.key_code);
         // Original modifier polling uses aggregate VK state. Keep it in sync
         // with the explicit Host snapshot, including focus regained mid-chord.
@@ -81,15 +81,15 @@ void NativeInput::apply(const AstraKrkrEvent &event) {
         TVPDispatchWindowPointerMove(x_, y_); break;
     case 3:
         if(event.pointer_button >= buttons_.size() || event.key_state > 2)
-            throw std::runtime_error("ASTRA_KRKR_NATIVE_POINTER_BUTTON");
+            throw std::runtime_error("SHINKI_EMU_KRKR_NATIVE_POINTER_BUTTON");
         buttons_[event.pointer_button] = event.key_state != 1;
         TVPDispatchWindowPointerButton(event.pointer_button, event.key_state != 1, x_, y_); break;
     case 4: {
         if(!std::isfinite(event.y) || event.x != 0)
-            throw std::runtime_error("ASTRA_KRKR_NATIVE_WHEEL");
+            throw std::runtime_error("SHINKI_EMU_KRKR_NATIVE_WHEEL");
         const double delta = wheel_ + static_cast<double>(event.y) * 120;
         if(delta < std::numeric_limits<int>::min() || delta > std::numeric_limits<int>::max())
-            throw std::runtime_error("ASTRA_KRKR_NATIVE_WHEEL_RANGE");
+            throw std::runtime_error("SHINKI_EMU_KRKR_NATIVE_WHEEL_RANGE");
         const auto integral = static_cast<int>(delta);
         wheel_ = delta - integral;
         if(integral) TVPDispatchWindowWheel(integral, x_, y_);
@@ -97,25 +97,25 @@ void NativeInput::apply(const AstraKrkrEvent &event) {
     }
     case 5:
         if(event.text_bytes > 32768 || (event.text_bytes && !event.text_utf8))
-            throw std::runtime_error("ASTRA_KRKR_NATIVE_TEXT_BOUND");
+            throw std::runtime_error("SHINKI_EMU_KRKR_NATIVE_TEXT_BOUND");
         if(event.text_bytes) TVPMainScene::onTextInput(std::string(
             reinterpret_cast<const char *>(event.text_utf8), event.text_bytes));
         break;
     case 6:
-        if(event.value > 1) throw std::runtime_error("ASTRA_KRKR_NATIVE_FOCUS");
+        if(event.value > 1) throw std::runtime_error("SHINKI_EMU_KRKR_NATIVE_FOCUS");
         if(event.value) Application->OnActivate();
         else { release(); Application->OnDeactivate(); }
         break;
     case 7:
-        if(!event.width || !event.height) throw std::runtime_error("ASTRA_KRKR_NATIVE_WINDOW_SIZE");
+        if(!event.width || !event.height) throw std::runtime_error("SHINKI_EMU_KRKR_NATIVE_WINDOW_SIZE");
         // Host output resize does not mutate the original logical game canvas.
         break;
     case 8:
-        if(event.value > 1) throw std::runtime_error("ASTRA_KRKR_NATIVE_VISIBILITY");
+        if(event.value > 1) throw std::runtime_error("SHINKI_EMU_KRKR_NATIVE_VISIBILITY");
         if(!event.value) release();
         break;
     case 9: {
-        if(event.value > 1) throw std::runtime_error("ASTRA_KRKR_NATIVE_SUSPEND");
+        if(event.value > 1) throw std::runtime_error("SHINKI_EMU_KRKR_NATIVE_SUSPEND");
         const bool suspended = event.value != 0;
         if(suspended_ && !suspended) reset_clock_ = true;
         suspended_ = suspended;
@@ -125,7 +125,7 @@ void NativeInput::apply(const AstraKrkrEvent &event) {
     case 10:
         if(auto window = TVPGetCurrentWindowNative()) window->GetForm()->Close();
         break;
-    default: throw std::runtime_error("ASTRA_KRKR_NATIVE_EVENT_KIND");
+    default: throw std::runtime_error("SHINKI_EMU_KRKR_NATIVE_EVENT_KIND");
     }
 }
 }

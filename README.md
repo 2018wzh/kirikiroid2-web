@@ -157,8 +157,8 @@ Keep the original GL context current while releasing scene references, call
 `TVPUninitUIExtension`, recycle textures and release render managers, then destroy
 the Director/context. The UI loader must not outlive the ObjectFactory belonging
 to that Director. Release the native audio renderer after its sources and workers.
-The optional `KRKR2_ASTRA_EMU` CMake option builds the AstraEMU core library
-from [`astra/`](./astra/README.md); it supplies host platform/presentation
+The optional `KRKR2_SHINKI_EMU` CMake option builds the ShinkiEMU core library
+from [`shinki/`](./shinki/README.md); it supplies host platform/presentation
 endpoints without replacing the VM, OpenGL, FFmpeg, OpenAL or compiled plugins.
 Game save locations and per-game preferences retain their original semantics.
 The application-path cache also expires with the owner thread, so opening a

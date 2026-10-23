@@ -392,8 +392,8 @@ if(BUILD_TOOLS AND NOT (IOS OR ANDROID OR WEB))
     add_subdirectory(tools)
 endif()
 
-# AstraEMU C ABI v3 adapter DLL; the standalone executable is unchanged.
-option(KRKR2_ASTRA_EMU "build the AstraEMU core library (Windows x64/MSVC)" OFF)
-if(KRKR2_ASTRA_EMU)
-    add_subdirectory(astra/native "${CMAKE_CURRENT_BINARY_DIR}/astra")
+# ShinkiEMU C ABI v3 adapter DLL; the standalone executable is unchanged.
+option(KRKR2_SHINKI_EMU "build the ShinkiEMU core library (Windows x64/MSVC)" OFF)
+if(KRKR2_SHINKI_EMU)
+    add_subdirectory(shinki/native "${CMAKE_CURRENT_BINARY_DIR}/shinki")
 endif()

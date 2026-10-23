@@ -1,20 +1,20 @@
 #pragma once
-#include "astra_emu.h"
+#include "shinki_emu.h"
 #include <spdlog/sinks/base_sink.h>
 #include <mutex>
 
-namespace astra::krkr {
+namespace shinki::krkr {
 class NativeLog final : public spdlog::sinks::base_sink<std::mutex> {
-    AstraEmuDiagnostics diagnostics_;
+    ShinkiEmuDiagnostics diagnostics_;
     void sink_it_(const spdlog::details::log_msg &message) override {
         if(!diagnostics_.emit) return;
-        AstraEmuLogRecord record{};
+        ShinkiEmuLogRecord record{};
         switch(message.level) {
-        case spdlog::level::critical: case spdlog::level::err: record.level = AstraEmuLOG_ERROR; break;
-        case spdlog::level::warn: record.level = AstraEmuLOG_WARN; break;
-        case spdlog::level::info: record.level = AstraEmuLOG_INFO; break;
-        case spdlog::level::debug: record.level = AstraEmuLOG_DEBUG; break;
-        default: record.level = AstraEmuLOG_TRACE; break;
+        case spdlog::level::critical: case spdlog::level::err: record.level = ShinkiEmuLOG_ERROR; break;
+        case spdlog::level::warn: record.level = ShinkiEmuLOG_WARN; break;
+        case spdlog::level::info: record.level = ShinkiEmuLOG_INFO; break;
+        case spdlog::level::debug: record.level = ShinkiEmuLOG_DEBUG; break;
+        default: record.level = ShinkiEmuLOG_TRACE; break;
         }
         record.target = {reinterpret_cast<const uint8_t *>(message.logger_name.data()), message.logger_name.size()};
         record.message = {reinterpret_cast<const uint8_t *>(message.payload.data()), message.payload.size()};
@@ -24,6 +24,6 @@ class NativeLog final : public spdlog::sinks::base_sink<std::mutex> {
     }
     void flush_() override { if(diagnostics_.flush) diagnostics_.flush(diagnostics_.context); }
 public:
-    explicit NativeLog(AstraEmuDiagnostics diagnostics) : diagnostics_(diagnostics) {}
+    explicit NativeLog(ShinkiEmuDiagnostics diagnostics) : diagnostics_(diagnostics) {}
 };
 }

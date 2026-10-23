@@ -1,11 +1,11 @@
 #pragma once
-#include "astra_emu.h"
+#include "shinki_emu.h"
 #include "NativeOwner.h"
 #include <atomic>
 #include <cstdint>
 #include <utility>
 
-namespace astra::krkr {
+namespace shinki::krkr {
 // Host-visible session phase. The original exit paths (System.exit,
 // System.terminate, the main-window close accepted by onCloseQuery, and the
 // exit after an error dialog) all end in TVPExitApplication, which the embedded
@@ -13,9 +13,9 @@ namespace astra::krkr {
 // the process. FINISHED and FAILED are final: a later pause, resume or modal
 // wait cannot replace them, so the Host always observes how the game ended.
 class Lifecycle {
-    std::atomic<std::uint32_t> phase_{AstraEmuSESSION_RUNNING};
+    std::atomic<std::uint32_t> phase_{ShinkiEmuSESSION_RUNNING};
     static constexpr bool is_final(std::uint32_t phase) noexcept {
-        return phase == AstraEmuSESSION_FINISHED || phase == AstraEmuSESSION_FAILED;
+        return phase == ShinkiEmuSESSION_FINISHED || phase == ShinkiEmuSESSION_FAILED;
     }
     bool move(std::uint32_t next) noexcept {
         auto current = phase_.load(std::memory_order_acquire);
@@ -27,25 +27,25 @@ class Lifecycle {
 
 public:
     std::uint32_t phase() const noexcept { return phase_.load(std::memory_order_acquire); }
-    void pause(bool paused) noexcept { move(paused ? AstraEmuSESSION_PAUSED : AstraEmuSESSION_RUNNING); }
+    void pause(bool paused) noexcept { move(paused ? ShinkiEmuSESSION_PAUSED : ShinkiEmuSESSION_RUNNING); }
     // A Host modal blocks the owner thread; it never ends the session.
-    void waiting(bool blocked) noexcept { move(blocked ? AstraEmuSESSION_WAITING : AstraEmuSESSION_RUNNING); }
+    void waiting(bool blocked) noexcept { move(blocked ? ShinkiEmuSESSION_WAITING : ShinkiEmuSESSION_RUNNING); }
     // Owner loop: true once the game has ended itself; the loop then stops and
     // tears the native session down normally.
-    bool observe(const AstraKrkrAdvanceResult &result) noexcept {
+    bool observe(const ShinkiKrkrAdvanceResult &result) noexcept {
         if(result.state != 2) return false;
-        move(AstraEmuSESSION_FINISHED);
+        move(ShinkiEmuSESSION_FINISHED);
         return true;
     }
     // Worker result after native teardown. Startup, frame or cleanup failure
     // (and Host cancellation) report FAILED; a clean end keeps FINISHED.
-    void end(AstraEmuStatus status) noexcept {
-        if(status != AstraEmuOK) phase_.store(AstraEmuSESSION_FAILED, std::memory_order_release);
+    void end(ShinkiEmuStatus status) noexcept {
+        if(status != ShinkiEmuOK) phase_.store(ShinkiEmuSESSION_FAILED, std::memory_order_release);
     }
     // close() succeeds after a game exit and after Host cancellation; only a
     // real native failure is returned again.
-    static AstraEmuStatus close_status(AstraEmuStatus failure) noexcept {
-        return failure == AstraEmuCANCELLED ? AstraEmuOK : failure;
+    static ShinkiEmuStatus close_status(ShinkiEmuStatus failure) noexcept {
+        return failure == ShinkiEmuCANCELLED ? ShinkiEmuOK : failure;
     }
 };
 

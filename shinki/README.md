@@ -1,9 +1,9 @@
-# astra-emu-kirikiroid2-web
+# shinki-emu-kirikiroid2-web
 
-AstraEMU core library `astra_emu_kirikiroid2_web.dll` (plugin `kirikiroid2-web`).
-The module exports the unified C `astra_emu_query` table.
-`astra_emu_kirikiroid2_web_query` is its uniquely named linked entry; the Rust
-crate `astra-emu-kirikiroid2-web` exposes that function as `query` and `QUERY`.
+ShinkiEMU core library `shinki_emu_kirikiroid2_web.dll` (plugin `kirikiroid2-web`).
+The module exports the unified C `shinki_emu_query` table.
+`shinki_emu_kirikiroid2_web_query` is its uniquely named linked entry; the Rust
+crate `shinki-emu-kirikiroid2-web` exposes that function as `query` and `QUERY`.
 The native owner schedules the original VM and Cocos/OpenGL renderer.
 Manager presents CPU leases and supplies optional typed window/modal services.
 There is no child process, socket protocol, Host PCM requirement, library reload,
@@ -13,16 +13,16 @@ or second application event loop. Audio uses the original OpenAL playback device
 
 - Upstream repository: `fenghengzhi/kirikiroid2-web`, base
   `7105b50822097d11b7b1f5894bf541509fd51350`.
-- Hosted fork: `https://github.com/2018wzh/kirikiroid2-web`, branch `astra`:
-  the upstream base plus one AstraEMU adaptation commit. That commit contains
-  this `astra/` directory (C++ adapter under `native/`, Rust test crate here),
-  the `KRKR2_ASTRA_EMU` CMake option, the retained Windows/MSVC build seams,
+- Hosted fork: `https://github.com/Project-Shinkirou/kirikiroid2-web`, branch `shinki`.
+  The adaptation contains this `shinki/` directory (C++ adapter under `native/`,
+  Rust query binding and lifecycle tests here),
+  the `KRKR2_SHINKI_EMU` CMake option, the retained Windows/MSVC build seams,
   the reusable-session lifecycle and path-cache fixes, the WindowEx overlay
   owner initialization, and FFmpeg 3.3.9 dynamic linking (libbpg uses the
   public HEVC decoder lookup; the Windows FFmpeg port is no longer static-only).
 - `layerExImage`: `23a9214f9b6e9bc3267b964707efa269c041b919`, compiled unchanged.
-- `native/include/astra_emu.h` is the generated shared header of
-  `astra-emu-abi` at AstraEngine `6d9d691dcc8f3d768e40b5be1d6f37366cca62d8`
+- `native/include/shinki_emu.h` is the generated shared header of
+  `shinki-emu-abi` at ShinkiEMU `cb8d9dd22d7d0ab129085b324c94d6dc81fa19e3`
   (ABI v3), the same revision `Cargo.toml` pins. Copy it again with the shared
   crate whenever that revision changes; do not edit the header independently.
 
@@ -104,47 +104,44 @@ and the core imports them. libbpg selects the HEVC decoder through the public
 `avcodec_find_decoder_by_name("hevc")`, and `NativeSession` calls
 `TVPInitLibAVCodec()` during single-threaded startup so the decoders are
 registered before any BPG image loads. Ship every FFmpeg DLL that
-`dumpbin /dependents astra_emu_kirikiroid2_web.dll` lists (from the vcpkg
+`dumpbin /dependents shinki_emu_kirikiroid2_web.dll` lists (from the vcpkg
 `installed/x64-windows/bin/` directory) in the core directory.
 
-Run from a captured `vcvars64.bat` environment. Set `VCPKG_ROOT` to the tool
-checkout and `BISON_EXECUTABLE` to the installed WinFlexBison binary. `$fork`
-is this repository's checkout; `$work` is an exclusive directory for the build
-tree and vcpkg install/cache directories, never inside the source tree:
+From the ShinkiEMU checkout, prepare dependencies explicitly, then build:
 
 ```powershell
-cmake -S $fork -B "$work/krkr-msvc" -G Ninja `
-  -DWINDOWS=ON -DCMAKE_BUILD_TYPE=Release -DENABLE_TESTS=OFF -DBUILD_TOOLS=OFF `
-  -DKRKR2_USE_STUB_SPDLOG=OFF -DKRKR2_ASTRA_EMU=ON `
-  -DCMAKE_C_COMPILER="$env:VCToolsInstallDir/bin/Hostx64/x64/cl.exe" `
-  -DCMAKE_CXX_COMPILER="$env:VCToolsInstallDir/bin/Hostx64/x64/cl.exe" `
-  -DBISON_EXECUTABLE="$env:BISON_EXECUTABLE" -DVCPKG_TARGET_TRIPLET=x64-windows `
-  -DVCPKG_INSTALLED_DIR="$work/krkr-native/vcpkg_installed" `
-  "-DVCPKG_INSTALL_OPTIONS=--x-buildtrees-root=$work/krkr-buildtrees;--x-packages-root=$work/krkr-packages;--downloads-root=$work/krkr-downloads"
-cmake --build "$work/krkr-msvc" --target astra_emu_kirikiroid2_web
+cargo xtask deps --target x86_64-pc-windows-msvc --core kirikiroid2-web
+cargo xtask build --target x86_64-pc-windows-msvc --core kirikiroid2-web --release
 ```
 
-`KRKR2_ASTRA_EMU` defaults to `OFF`; Web and other platform builds are unaffected.
-The target writes `astra_emu_kirikiroid2_web.dll`/`.lib`, the app-local
-dependencies and `Resources/` into `$work/krkr-msvc/astra/`. The native DLL
-itself is the dynamic core module; no child executable is packaged.
+The adapter's Cargo entry runs the root CMake project with `KRKR2_SHINKI_EMU=ON`.
+It builds the original shared core and the lifecycle test library with at most
+four Cargo jobs (`CARGO_BUILD_JOBS=4`). CMake runs offline, with vcpkg installation
+disabled; missing dependencies fail with a preparation diagnostic.
+The upstream Python parser/resource generators remain build tools.
 
-The Rust crate links that import library and checks the C query table. Its unit
-tests also link `astra_emu_kirikiroid2_web_lifecycle_test.lib`, a test-only
-static library built with the core target from `native/NativeLifecycleTest.cpp`.
-It drives the production `NativeLifecycle.h` state machine through C entry
-points without opening a VM, GL context or session; the shipped DLL neither
-contains nor exports it. Put the native output directory and the MSVC OpenMP
-redist (`vcomp140.dll`) on `PATH` for the test run:
+For direct Cargo invocation, use a VS x64 developer shell and set `VCPKG_ROOT`,
+`SHINKI_EMU_VCPKG_INSTALLED` (the prepared install root),
+`SHINKI_EMU_VCPKG_TRIPLET=x64-windows`, and `BISON_EXECUTABLE`.
+The build script requires matching Windows x64 `HOST` and `TARGET`.
+`KRKR2_SHINKI_EMU` defaults to `OFF`; Web and other platform builds are unaffected.
 
-```powershell
-$env:ASTRA_KRKR_NATIVE_LIB_DIR = "$work/krkr-msvc/astra"
-$openmp = (Get-ChildItem "$env:VCToolsRedistDir/x64" -Directory -Filter 'Microsoft.VC*.OpenMP' | Select-Object -First 1).FullName
-$env:PATH = "$env:ASTRA_KRKR_NATIVE_LIB_DIR;$openmp;$env:PATH"
-cargo test --manifest-path "$fork/astra/Cargo.toml" --locked --release -p astra-emu-kirikiroid2-web
-```
+Cargo owns the native tree at `OUT_DIR/native`. The target writes
+`shinki_emu_kirikiroid2_web.dll`/`.lib`, app-local dependencies,
+the test-only static library and a copied `Resources/` into its `shinki/`
+subdirectory. `OUT_DIR/core-build.json` records the real DLL, built resource
+directory and source/vcpkg licenses for xtask. No prebuilt DLL override or
+source-tree resource installation is used.
 
-An AstraEMU core directory (`astra_emu_kirikiroid2_web/` with `core.json`)
+The Rust crate links the import library and checks the C query table. Its unit
+tests also link `shinki_emu_kirikiroid2_web_lifecycle_test.lib`, built from
+`native/NativeLifecycleTest.cpp`. It drives the production `NativeLifecycle.h`
+state machine without opening a VM or GL context; the shipped DLL neither
+contains nor exports the harness. For a direct Cargo test run, add the native
+output directory and the MSVC OpenMP redist (`vcomp140.dll`) to `PATH`, then run
+`cargo test --manifest-path shinki/Cargo.toml --locked --release -p shinki-emu-kirikiroid2-web`.
+
+A ShinkiEMU core directory (`shinki_emu_kirikiroid2_web/` with `core.json`)
 contains the DLL, `Resources/`, every app-local DLL of the output directory,
 the FFmpeg 3.3.9 DLLs and their `iconv-2`, `liblzma`, `bz2`, `zlib1`
 dependencies from the vcpkg `bin/`, and `vcomp140.dll`. `msvcp140.dll`,
@@ -166,7 +163,7 @@ WindowEx now initializes its optional overlay owner before destruction; the
 previous uninitialized pointer could cause an invalid delete during shutdown.
 This generic lifetime fix does not alter game scripts or use process isolation.
 
-Earlier development observations and raw diagnostics remain in AstraEngine Git
-history and ignored evidence. They are not re-run automatically. Original game
+Earlier development observations and raw diagnostics remain in the source
+project's history. They are not re-run automatically. Original game
 files and existing saves must remain unchanged; user-reported manual
 interruptions are not engine failures or completed routes.

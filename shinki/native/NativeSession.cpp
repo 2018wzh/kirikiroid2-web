@@ -33,15 +33,15 @@ extern void TVPReleaseAudioRenderer();
 #include <filesystem>
 #include <stdexcept>
 
-namespace astra::krkr {
+namespace shinki::krkr {
 class EmbeddedView final : public cocos2d::GLViewImpl {
 public:
     static EmbeddedView *create() {
         auto view = std::unique_ptr<EmbeddedView>(new EmbeddedView());
         glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
         glfwWindowHint(GLFW_FOCUSED, GLFW_FALSE);
-        if(!view->initWithRect("Astra KrKr context", cocos2d::Rect(0, 0, 960, 640), 1.0f, false))
-            throw std::runtime_error("ASTRA_KRKR_NATIVE_GL_CONTEXT");
+        if(!view->initWithRect("Shinki KrKr context", cocos2d::Rect(0, 0, 960, 640), 1.0f, false))
+            throw std::runtime_error("SHINKI_EMU_KRKR_NATIVE_GL_CONTEXT");
         view->autorelease();
         return view.release();
     }
@@ -57,30 +57,30 @@ public:
 };
 static std::string path_text(const std::uint8_t *data, std::uint64_t bytes) {
     if(!data || !bytes || bytes > 4096 || std::memchr(data, 0, bytes))
-        throw std::runtime_error("ASTRA_KRKR_NATIVE_PATH_BOUND");
+        throw std::runtime_error("SHINKI_EMU_KRKR_NATIVE_PATH_BOUND");
     const auto text = reinterpret_cast<const char *>(data);
     if(!MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, text, static_cast<int>(bytes), nullptr, 0))
-        throw std::runtime_error("ASTRA_KRKR_NATIVE_PATH_UTF8");
+        throw std::runtime_error("SHINKI_EMU_KRKR_NATIVE_PATH_UTF8");
     std::string result(text, bytes);
     const auto path = std::filesystem::u8path(result);
     if(!path.is_absolute() || !std::filesystem::is_directory(path))
-        throw std::runtime_error("ASTRA_KRKR_NATIVE_PATH_DIRECTORY");
+        throw std::runtime_error("SHINKI_EMU_KRKR_NATIVE_PATH_DIRECTORY");
     std::replace(result.begin(), result.end(), '\\', '/');
     if(result.back() != '/') result += '/';
     return result;
 }
-NativeSession::NativeSession(const AstraKrkrBootOptions &options)
+NativeSession::NativeSession(const ShinkiKrkrBootOptions &options)
     : callbacks_(options.callbacks),
       host_{this, "opengl", changed, ready, exit, fullscreen, caption} {}
 NativeSession::~NativeSession() {
     if(!closed_) {
         try { shutdown(); }
-        catch(...) { spdlog::error("ASTRA_KRKR_NATIVE_DESTRUCTOR_CLEANUP_FAILED"); }
+        catch(...) { spdlog::error("SHINKI_EMU_KRKR_NATIVE_DESTRUCTOR_CLEANUP_FAILED"); }
     }
 }
 void NativeSession::check_thread() const {
     if(std::this_thread::get_id() != thread_)
-        throw std::runtime_error("ASTRA_KRKR_NATIVE_OWNER_THREAD");
+        throw std::runtime_error("SHINKI_EMU_KRKR_NATIVE_OWNER_THREAD");
 }
 void NativeSession::changed(void *context, tTJSNI_BaseWindow *window) {
     auto &self = *static_cast<NativeSession *>(context);
@@ -116,7 +116,7 @@ bool NativeSession::fullscreen(void *context, iWindowLayer *, bool enabled) {
 }
 void NativeSession::caption(void *context, iWindowLayer *, const std::string &text) {
     if(text.size() > 4096 || std::any_of(text.begin(), text.end(), [](unsigned char c) { return c < 32 || c == 127; }))
-        throw std::runtime_error("ASTRA_KRKR_NATIVE_CAPTION_BOUND");
+        throw std::runtime_error("SHINKI_EMU_KRKR_NATIVE_CAPTION_BOUND");
     auto &self = *static_cast<NativeSession *>(context);
     self.callbacks_.caption(self.callbacks_.context, text);
 }
@@ -126,20 +126,20 @@ void NativeSession::tick(float seconds) {
     auto director = cocos2d::Director::getInstance();
     director->mainLoop(seconds);
 }
-void NativeSession::boot(const AstraKrkrBootOptions &options) {
+void NativeSession::boot(const ShinkiKrkrBootOptions &options) {
     check_thread();
     if(!options.window.width || !options.window.height || options.window.focused > 1 || options.window.visible > 1)
-        throw std::runtime_error("ASTRA_KRKR_NATIVE_WINDOW_STATE");
+        throw std::runtime_error("SHINKI_EMU_KRKR_NATIVE_WINDOW_STATE");
     auto game = path_text(options.game_path_utf8, options.game_path_bytes);
     if(!std::filesystem::is_regular_file(std::filesystem::u8path(game + "startup.tjs"))) {
         if(!std::filesystem::is_regular_file(std::filesystem::u8path(game + "data.xp3")))
-            throw std::runtime_error("ASTRA_KRKR_NATIVE_GAME_ENTRY");
+            throw std::runtime_error("SHINKI_EMU_KRKR_NATIVE_GAME_ENTRY");
         game += "data.xp3"; // Same entry chosen by the original file selector.
     }
     const auto resources = path_text(options.resource_root_utf8, options.resource_root_bytes);
     const auto writable = path_text(options.writable_root_utf8, options.writable_root_bytes);
     if(!TVPInstallEmbeddedSessionHost(&host_))
-        throw std::runtime_error("ASTRA_KRKR_NATIVE_SESSION_IN_USE");
+        throw std::runtime_error("SHINKI_EMU_KRKR_NATIVE_SESSION_IN_USE");
     installed_ = true;
     modal_ = std::make_unique<HostModal>(callbacks_.context, callbacks_.modal);
     TVPBeginSystemSession();
@@ -159,11 +159,11 @@ void NativeSession::boot(const AstraKrkrBootOptions &options) {
     launched_ = true; // Includes partial launch cleanup.
     cocos2d::Director::getInstance()->setOpenGLView(EmbeddedView::create());
     if(!application->applicationDidFinishLaunching())
-        throw std::runtime_error("ASTRA_KRKR_NATIVE_APPLICATION_LAUNCH");
+        throw std::runtime_error("SHINKI_EMU_KRKR_NATIVE_APPLICATION_LAUNCH");
     auto director = cocos2d::Director::getInstance();
     director->setDisplayStats(false);
     auto view = director->getOpenGLView();
-    if(!view || !view->getWin32Window()) throw std::runtime_error("ASTRA_KRKR_NATIVE_GL_WINDOW");
+    if(!view || !view->getWin32Window()) throw std::runtime_error("SHINKI_EMU_KRKR_NATIVE_GL_WINDOW");
     ShowWindow(view->getWin32Window(), SW_HIDE);
     // The context is created invisible; its present endpoint only flushes GL.
     glfwSwapInterval(0);
@@ -172,7 +172,7 @@ void NativeSession::boot(const AstraKrkrBootOptions &options) {
     auto scene = TVPMainScene::GetInstance();
     scene->unschedule("launch");
     TVPGlobalPreferenceForm::Initialize();
-    if(!scene->startupFrom(game)) throw std::runtime_error("ASTRA_KRKR_NATIVE_GAME_START");
+    if(!scene->startupFrom(game)) throw std::runtime_error("SHINKI_EMU_KRKR_NATIVE_GAME_START");
     const auto started = std::chrono::steady_clock::now();
     const auto initial_wait = modal_->owner_waiting();
     auto previous = started;
@@ -181,42 +181,42 @@ void NativeSession::boot(const AstraKrkrBootOptions &options) {
         const auto now = std::chrono::steady_clock::now();
         const auto waiting = modal_->owner_waiting();
         if(now - started - (waiting - initial_wait) >= std::chrono::seconds(5))
-            throw std::runtime_error("ASTRA_KRKR_NATIVE_GAME_CANVAS_TIMEOUT");
+            throw std::runtime_error("SHINKI_EMU_KRKR_NATIVE_GAME_CANVAS_TIMEOUT");
         tick(std::chrono::duration<float>(now - previous - (waiting - previous_wait)).count());
         previous = now;
         previous_wait = waiting;
         if(!texture_ && !exited_) std::this_thread::sleep_for(std::chrono::milliseconds(1));
     }
-    if(exited_ || !texture_) throw std::runtime_error("ASTRA_KRKR_NATIVE_EXIT_BEFORE_CANVAS");
-    if(TVPGetRenderManager()->IsSoftware()) throw std::runtime_error("ASTRA_KRKR_NATIVE_GPU_REQUIRED");
+    if(exited_ || !texture_) throw std::runtime_error("SHINKI_EMU_KRKR_NATIVE_EXIT_BEFORE_CANVAS");
+    if(TVPGetRenderManager()->IsSoftware()) throw std::runtime_error("SHINKI_EMU_KRKR_NATIVE_GPU_REQUIRED");
     const auto info = frame_info();
-    spdlog::info("ASTRA_KRKR_NATIVE_READY raster={}x{} stage={}x{} stride={} focused={} renderer={}",
+    spdlog::info("SHINKI_EMU_KRKR_NATIVE_READY raster={}x{} stage={}x{} stride={} focused={} renderer={}",
         info.width, info.height, info.logical_width, info.logical_height, info.stride,
         ::Application->GetActivating(), reinterpret_cast<const char *>(glGetString(GL_RENDERER)));
 }
-AstraKrkrFrameInfo NativeSession::frame_info() const {
+ShinkiKrkrFrameInfo NativeSession::frame_info() const {
     check_thread();
     if(!texture_ || texture_->GetFormat() != TVPTextureFormat::RGBA)
-        throw std::runtime_error("ASTRA_KRKR_NATIVE_FRAME_FORMAT");
+        throw std::runtime_error("SHINKI_EMU_KRKR_NATIVE_FRAME_FORMAT");
     const auto pitch = texture_->GetPitch();
-    AstraKrkrFrameInfo result{texture_->GetWidth(), texture_->GetHeight(), logical_width_, logical_height_,
+    ShinkiKrkrFrameInfo result{texture_->GetWidth(), texture_->GetHeight(), logical_width_, logical_height_,
         pitch > 0 ? static_cast<std::uint32_t>(pitch) : 0};
     if(!result.width || !result.height || !result.logical_width || !result.logical_height ||
        static_cast<std::uint64_t>(result.width) * 4 > result.stride ||
        static_cast<std::uint64_t>(result.stride) * result.height > 67108864 ||
        static_cast<std::uint64_t>(result.width) * result.logical_height !=
        static_cast<std::uint64_t>(result.height) * result.logical_width)
-        throw std::runtime_error("ASTRA_KRKR_NATIVE_FRAME_GEOMETRY");
+        throw std::runtime_error("SHINKI_EMU_KRKR_NATIVE_FRAME_GEOMETRY");
     return result;
 }
-void NativeSession::copy_frame(const AstraKrkrFrameInfo &expected, std::uint8_t *target, std::uint64_t bytes) {
+void NativeSession::copy_frame(const ShinkiKrkrFrameInfo &expected, std::uint8_t *target, std::uint64_t bytes) {
     const auto actual = frame_info();
     if(std::memcmp(&expected, &actual, sizeof(actual)) || !target ||
        bytes != static_cast<std::uint64_t>(actual.stride) * actual.height)
-        throw std::runtime_error("ASTRA_KRKR_NATIVE_FRAME_TARGET");
+        throw std::runtime_error("SHINKI_EMU_KRKR_NATIVE_FRAME_TARGET");
     const auto source = static_cast<const std::uint8_t *>(texture_->GetPixelData());
     if(!source || texture_->GetPitch() != actual.stride)
-        throw std::runtime_error("ASTRA_KRKR_NATIVE_FRAME_READBACK");
+        throw std::runtime_error("SHINKI_EMU_KRKR_NATIVE_FRAME_READBACK");
     // Do not copy uninitialized or off-canvas native padding into a CPU lease.
     // Preserve the original stride, writing visible bytes once and clearing padding.
     const auto row_bytes = static_cast<std::size_t>(actual.width) * 4;
@@ -227,10 +227,10 @@ void NativeSession::copy_frame(const AstraKrkrFrameInfo &expected, std::uint8_t 
     }
     changed_ = false;
 }
-AstraKrkrAdvanceResult NativeSession::advance(std::uint64_t elapsed, const AstraKrkrEvent *events, std::uint32_t count) {
+ShinkiKrkrAdvanceResult NativeSession::advance(std::uint64_t elapsed, const ShinkiKrkrEvent *events, std::uint32_t count) {
     check_thread();
     if(closed_ || (count && !events) || count > 4096)
-        throw std::runtime_error("ASTRA_KRKR_NATIVE_ADVANCE_ARGUMENT");
+        throw std::runtime_error("SHINKI_EMU_KRKR_NATIVE_ADVANCE_ARGUMENT");
     if(!exited_) {
         // An exit requested during this frame ends it by unwinding; the
         // result below then reports the finished game to the owner.
@@ -239,7 +239,7 @@ AstraKrkrAdvanceResult NativeSession::advance(std::uint64_t elapsed, const Astra
             if(!input_.suspended()) tick(static_cast<float>(static_cast<double>(elapsed) / 1000000000.0));
         });
     }
-    AstraKrkrAdvanceResult result{};
+    ShinkiKrkrAdvanceResult result{};
     result.state = exited_ ? 2 : 0;
     result.exit_code = exit_code_;
     result.reset_clock = input_.take_reset_clock();
@@ -279,14 +279,14 @@ void NativeSession::shutdown() {
     TJS::TJSExecutionCancelled = nullptr;
     TJS::TJSExecutionCancellationContext = nullptr;
     if(installed_) { TVPRemoveEmbeddedSessionHost(&host_); installed_ = false; }
-    spdlog::info("ASTRA_KRKR_NATIVE_CLOSED cleanup_failed={}", bool(failure));
+    spdlog::info("SHINKI_EMU_KRKR_NATIVE_CLOSED cleanup_failed={}", bool(failure));
     if(failure) std::rethrow_exception(failure);
 }
 }
 
-std::uint64_t astra::krkr::NativeSession::frame_interval_ns() const {
+std::uint64_t shinki::krkr::NativeSession::frame_interval_ns() const {
     return static_cast<std::uint64_t>(cocos2d::Director::getInstance()->getAnimationInterval() * 1000000000.0);
 }
-std::uint64_t astra::krkr::NativeSession::modal_wait_ns() const {
+std::uint64_t shinki::krkr::NativeSession::modal_wait_ns() const {
     return static_cast<std::uint64_t>(std::chrono::duration_cast<std::chrono::nanoseconds>(modal_->owner_waiting()).count());
 }

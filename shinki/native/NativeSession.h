@@ -7,11 +7,11 @@
 #include <thread>
 
 class TVPAppDelegate;
-namespace astra::krkr {
+namespace shinki::krkr {
 class HostModal;
 class NativeSession final {
     const std::thread::id thread_ = std::this_thread::get_id();
-    AstraKrkrCallbacks callbacks_;
+    ShinkiKrkrCallbacks callbacks_;
     TVPEmbeddedSessionHost host_;
     NativeInput input_;
     std::unique_ptr<HostModal> modal_;
@@ -31,16 +31,16 @@ class NativeSession final {
     void tick(float);
 public:
     void check_thread() const;
-    explicit NativeSession(const AstraKrkrBootOptions &);
+    explicit NativeSession(const ShinkiKrkrBootOptions &);
     ~NativeSession();
     NativeSession(const NativeSession &) = delete;
     NativeSession &operator=(const NativeSession &) = delete;
-    void boot(const AstraKrkrBootOptions &);
+    void boot(const ShinkiKrkrBootOptions &);
     std::uint64_t frame_interval_ns() const;
     std::uint64_t modal_wait_ns() const;
-    AstraKrkrFrameInfo frame_info() const;
-    void copy_frame(const AstraKrkrFrameInfo &, std::uint8_t *, std::uint64_t);
-    AstraKrkrAdvanceResult advance(std::uint64_t, const AstraKrkrEvent *, std::uint32_t);
+    ShinkiKrkrFrameInfo frame_info() const;
+    void copy_frame(const ShinkiKrkrFrameInfo &, std::uint8_t *, std::uint64_t);
+    ShinkiKrkrAdvanceResult advance(std::uint64_t, const ShinkiKrkrEvent *, std::uint32_t);
     void shutdown();
 };
 }

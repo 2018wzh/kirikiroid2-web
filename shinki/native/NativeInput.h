@@ -2,7 +2,7 @@
 #include "NativeOwner.h"
 #include <array>
 
-namespace astra::krkr {
+namespace shinki::krkr {
 class NativeInput {
     std::array<bool, 256> held_{};
     std::array<bool, 5> buttons_{};
@@ -12,7 +12,7 @@ class NativeInput {
     bool reset_clock_ = false;
     void key(unsigned int code, bool pressed, bool repeated = false);
 public:
-    void apply(const AstraKrkrEvent &event);
+    void apply(const ShinkiKrkrEvent &event);
     void release();
     bool suspended() const noexcept { return suspended_; }
     bool take_reset_clock() noexcept;
