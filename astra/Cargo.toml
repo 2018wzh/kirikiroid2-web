@@ -1,0 +1,22 @@
+[package]
+name = "astra-emu-kirikiroid2-web"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.92"
+license = "MIT OR Apache-2.0"
+publish = false
+build = "build.rs"
+
+[lib]
+crate-type = ["rlib"]
+
+[dependencies]
+astra-emu-abi = { git = "https://github.com/2018wzh/AstraEngine.git", rev = "6d9d691dcc8f3d768e40b5be1d6f37366cca62d8" }
+
+[workspace]
+
+[package.metadata.astra]
+upstream = "https://github.com/fenghengzhi/kirikiroid2-web"
+upstream_revision = "7105b50822097d11b7b1f5894bf541509fd51350"
+hosted_fork = "https://github.com/2018wzh/kirikiroid2-web"
+hosted_fork_branch = "astra"

@@ -3,6 +3,7 @@
 #include "EmoteBlinkRng.h"
 
 #include <chrono>
+#include <cstring>
 
 namespace motion {
 
@@ -107,7 +108,7 @@ namespace motion {
                               0x3FF0000000000000ull;
         double canonicalPlusOne;
         static_assert(sizeof(double) == sizeof(uint64_t), "");
-        __builtin_memcpy(&canonicalPlusOne, &bits, sizeof(double));
+        std::memcpy(&canonicalPlusOne, &bits, sizeof(double));
         return canonicalPlusOne - 1.0;
     }
 

@@ -27,8 +27,7 @@ namespace motion::render_backend_guess {
         if(privateOpenGLRenderManagerTestOverride_guess) {
             return privateOpenGLRenderManagerTestOverride_guess;
         }
-        static iTVPRenderManager *manager =
-            TVPGetRenderManager(TJS_W("opengl"));
+        static thread_local iTVPRenderManager *manager = TVPGetRenderManager(TJS_W("opengl"));
         return manager;
     }
 
@@ -293,8 +292,8 @@ namespace motion::render_backend_guess {
         // still-zero color ID and initialization is not retried.
         switch(blendLowNibble) {
             case 1: {
-                static iTVPRenderMethod *method = nullptr;
-                static int colorId = 0;
+                static thread_local iTVPRenderMethod *method = nullptr;
+                static thread_local int colorId = 0;
                 if(!method) {
                     method = getPrivateOpenGLRenderManager_guess()->GetRenderMethod(
                         "PsAddBlend_color");
@@ -305,8 +304,8 @@ namespace motion::render_backend_guess {
             }
             case 2:
             case 5: {
-                static iTVPRenderMethod *method = nullptr;
-                static int colorId = 0;
+                static thread_local iTVPRenderMethod *method = nullptr;
+                static thread_local int colorId = 0;
                 if(!method) {
                     method = getPrivateOpenGLRenderManager_guess()->GetRenderMethod(
                         "PsSubBlend_color");
@@ -316,8 +315,8 @@ namespace motion::render_backend_guess {
                 return method;
             }
             case 3: {
-                static iTVPRenderMethod *method = nullptr;
-                static int colorId = 0;
+                static thread_local iTVPRenderMethod *method = nullptr;
+                static thread_local int colorId = 0;
                 if(!method) {
                     method = getPrivateOpenGLRenderManager_guess()->GetRenderMethod(
                         "PsMulBlend_color");
@@ -327,8 +326,8 @@ namespace motion::render_backend_guess {
                 return method;
             }
             case 4: {
-                static iTVPRenderMethod *method = nullptr;
-                static int colorId = 0;
+                static thread_local iTVPRenderMethod *method = nullptr;
+                static thread_local int colorId = 0;
                 if(!method) {
                     method = getPrivateOpenGLRenderManager_guess()->GetRenderMethod(
                         "PsScreenBlend_color");
@@ -339,8 +338,8 @@ namespace motion::render_backend_guess {
             }
             default:
                 if(alphaOpAdd) {
-                    static iTVPRenderMethod *method = nullptr;
-                    static int colorId = 0;
+                    static thread_local iTVPRenderMethod *method = nullptr;
+                    static thread_local int colorId = 0;
                     if(!method) {
                         method = getPrivateOpenGLRenderManager_guess()->GetRenderMethod(
                             "AlphaBlend_color_a");
@@ -349,8 +348,8 @@ namespace motion::render_backend_guess {
                     method->SetParameterColor4B(colorId, packedColor);
                     return method;
                 } else {
-                    static iTVPRenderMethod *method = nullptr;
-                    static int colorId = 0;
+                    static thread_local iTVPRenderMethod *method = nullptr;
+                    static thread_local int colorId = 0;
                     if(!method) {
                         method = getPrivateOpenGLRenderManager_guess()->GetRenderMethod(
                             "AlphaBlend_color");
@@ -372,9 +371,9 @@ namespace motion::render_backend_guess {
         // order is method, color ID, then alpha-threshold ID.
         switch(blendLowNibble) {
             case 1: {
-                static iTVPRenderMethod *method = nullptr;
-                static int colorId = 0;
-                static int thresholdId = 0;
+                static thread_local iTVPRenderMethod *method = nullptr;
+                static thread_local int colorId = 0;
+                static thread_local int thresholdId = 0;
                 if(!method) {
                     method = getPrivateOpenGLRenderManager_guess()->GetRenderMethod(
                         "PsAddBlend_color_AlphaTest");
@@ -387,9 +386,9 @@ namespace motion::render_backend_guess {
             }
             case 2:
             case 5: {
-                static iTVPRenderMethod *method = nullptr;
-                static int colorId = 0;
-                static int thresholdId = 0;
+                static thread_local iTVPRenderMethod *method = nullptr;
+                static thread_local int colorId = 0;
+                static thread_local int thresholdId = 0;
                 if(!method) {
                     method = getPrivateOpenGLRenderManager_guess()->GetRenderMethod(
                         "PsSubBlend_color_AlphaTest");
@@ -401,9 +400,9 @@ namespace motion::render_backend_guess {
                 return method;
             }
             case 3: {
-                static iTVPRenderMethod *method = nullptr;
-                static int colorId = 0;
-                static int thresholdId = 0;
+                static thread_local iTVPRenderMethod *method = nullptr;
+                static thread_local int colorId = 0;
+                static thread_local int thresholdId = 0;
                 if(!method) {
                     method = getPrivateOpenGLRenderManager_guess()->GetRenderMethod(
                         "PsMulBlend_color_AlphaTest");
@@ -415,9 +414,9 @@ namespace motion::render_backend_guess {
                 return method;
             }
             case 4: {
-                static iTVPRenderMethod *method = nullptr;
-                static int colorId = 0;
-                static int thresholdId = 0;
+                static thread_local iTVPRenderMethod *method = nullptr;
+                static thread_local int colorId = 0;
+                static thread_local int thresholdId = 0;
                 if(!method) {
                     method = getPrivateOpenGLRenderManager_guess()->GetRenderMethod(
                         "PsScreenBlend_color_AlphaTest");
@@ -430,9 +429,9 @@ namespace motion::render_backend_guess {
             }
             default:
                 if(alphaOpAdd) {
-                    static iTVPRenderMethod *method = nullptr;
-                    static int colorId = 0;
-                    static int thresholdId = 0;
+                    static thread_local iTVPRenderMethod *method = nullptr;
+                    static thread_local int colorId = 0;
+                    static thread_local int thresholdId = 0;
                     if(!method) {
                         method = getPrivateOpenGLRenderManager_guess()->GetRenderMethod(
                             "AlphaBlend_color_a_AlphaTest");
@@ -444,9 +443,9 @@ namespace motion::render_backend_guess {
                     method->SetParameterOpa(thresholdId, 64);
                     return method;
                 } else {
-                    static iTVPRenderMethod *method = nullptr;
-                    static int colorId = 0;
-                    static int thresholdId = 0;
+                    static thread_local iTVPRenderMethod *method = nullptr;
+                    static thread_local int colorId = 0;
+                    static thread_local int thresholdId = 0;
                     if(!method) {
                         method = getPrivateOpenGLRenderManager_guess()->GetRenderMethod(
                             "AlphaBlend_color_AlphaTest");

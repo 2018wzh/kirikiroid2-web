@@ -25,6 +25,9 @@ set(OBJECTS
 set(LIB_OBJ filestr.cpp scantree.cpp dll.cpp qopen.cpp)
 
 target_sources(${PROJECT_NAME} PRIVATE ${OBJECTS} ${LIB_OBJ})
+if(WIN32 AND BUILD_SHARED_LIBS)
+    target_sources(${PROJECT_NAME} PRIVATE dll.def)
+endif()
 
 target_include_directories(${PROJECT_NAME}
     INTERFACE

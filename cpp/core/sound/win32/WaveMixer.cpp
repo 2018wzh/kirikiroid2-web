@@ -1,5 +1,7 @@
 #include "WaveMixer.h"
 #include "tjsCommHead.h"
+#include "../../environ/EmbeddedAudio.h"
+#include <stdexcept>
 
 #ifdef __APPLE__
 #include <OpenAL/al.h>
@@ -240,6 +242,8 @@ protected:
     int _frame_size = 0;
 
 public:
+    virtual ~iTVPAudioRenderer() = default;
+    bool HasStreams() const { return !_streams.empty(); }
     iTVPAudioRenderer() {
         memset(&_spec, 0, sizeof(_spec));
         _spec.freq = 48000;
@@ -536,8 +540,8 @@ public:
     }
 
     ~tTVPSoundBufferAL() override {
-        alDeleteBuffers(_bufferCount, _bufferIds);
         alDeleteSources(1, &_alSource);
+        alDeleteBuffers(_bufferCount, _bufferIds);
         delete[] _bufferIds;
         delete[] _bufferIds2;
         delete[] _bufferSize;
@@ -726,9 +730,12 @@ public:
 class tTVPAudioRendererAL : public iTVPAudioRenderer {
     ALCdevice *_device = nullptr;
     ALCcontext *_context = nullptr;
+    bool _borrowedContext = false;
 
 public:
     virtual ~tTVPAudioRendererAL() {
+        if(_borrowedContext)
+            return;
         if(_context) {
             // alDeleteSources(TVP_MAX_AUDIO_COUNT, _alSources);
             alcMakeContextCurrent(nullptr);
@@ -739,29 +746,23 @@ public:
     }
 
     bool Init() override {
-        ALboolean enumeration =
-            alcIsExtensionPresent(nullptr, "ALC_ENUMERATION_EXT");
-        if(enumeration == AL_FALSE) {
-            // enumeration not supported
-            _device = alcOpenDevice(nullptr);
-        } else {
-            // enumeration supported
-            const ALCchar *devices =
-                alcGetString(nullptr, ALC_DEVICE_SPECIFIER);
-            std::vector<std::string> alldev;
-            ttstr log(TJS_W("(info) Sound Driver/Device found : "));
-            while(*devices) {
-                TVPAddImportantLog(log + devices);
-                alldev.emplace_back(devices);
-                devices += alldev.back().length();
-            }
-            _device = alcOpenDevice(alldev[0].c_str());
+        if(const auto embedded = TVPGetEmbeddedAudioContext()) {
+            if(alcGetContextsDevice(embedded->context) != embedded->device ||
+               alcGetCurrentContext() != embedded->context)
+                throw std::runtime_error("embedded OpenAL context is not current");
+            _device = embedded->device;
+            _context = embedded->context;
+            _borrowedContext = true;
+            return true;
         }
+        // The native device owns playback and its mixer thread. Do not install a
+        // loopback context or infer playback progress from the embedding host.
+        _device = alcOpenDevice(nullptr);
         if(!_device)
             return false;
 
         _context = alcCreateContext(_device, nullptr);
-        alcMakeContextCurrent(_context);
+        if(!_context || !alcMakeContextCurrent(_context)) return false;
 
         return true;
     }
@@ -773,7 +774,32 @@ public:
     }
 
     ALCcontext *GetContext() { return _context; }
+
+    void ReleaseEmbedded() {
+        if(!_borrowedContext || !_streams.empty())
+            throw std::runtime_error("embedded OpenAL renderer still owns live streams");
+        delete this;
+    }
 };
+
+void TVPReleaseEmbeddedAudioRenderer() {
+    if(!TVPAudioRenderer)
+        return;
+    auto renderer = dynamic_cast<tTVPAudioRendererAL *>(TVPAudioRenderer);
+    if(!TVPGetEmbeddedAudioContext() || !renderer)
+        throw std::runtime_error("audio renderer is not the embedded OpenAL renderer");
+    renderer->ReleaseEmbedded();
+    TVPAudioRenderer = nullptr;
+}
+
+void TVPReleaseAudioRenderer() {
+    if(!TVPAudioRenderer) return;
+    if(TVPAudioRenderer->HasStreams())
+        throw std::runtime_error("OpenAL renderer still owns live streams");
+    delete TVPAudioRenderer;
+    TVPAudioRenderer = nullptr;
+    SDL_QuitSubSystem(SDL_INIT_AUDIO);
+}
 
 void tTVPSoundBufferAL::checkerr(const char *funcname) {
 #if _DEBUG
@@ -802,7 +828,10 @@ static iTVPAudioRenderer *CreateAudioRenderer() {
     return renderer;
 #endif
     renderer = new tTVPAudioRendererAL;
-    renderer->Init();
+    if(!renderer->Init()) {
+        delete renderer;
+        throw std::runtime_error("OpenAL playback device initialization failed");
+    }
     return renderer;
 }
 

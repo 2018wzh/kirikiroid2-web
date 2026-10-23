@@ -157,10 +157,9 @@ namespace motion {
         // retried from stage one, whereas a failed parameter lookup preserves
         // the already-published method and retries only stage two.  The Android
         // armv7 build emits no explicit guard-abort landing for these calls.
-        static auto *method =
-            render_backend_guess::getPrivateOpenGLRenderManager_guess()
-                ->GetRenderMethod("FillARGB");
-        static const int colorId = method->EnumParameterID("color");
+        static thread_local auto *method = render_backend_guess::getPrivateOpenGLRenderManager_guess()
+            ->GetRenderMethod("FillARGB");
+        static thread_local const int colorId = method->EnumParameterID("color");
         method->SetParameterColor4B(colorId, static_cast<unsigned int>(color));
         const tTVPRect rc(0, 0, _targetTexture->GetWidth(),
                           _targetTexture->GetHeight());

@@ -2158,6 +2158,8 @@ struct ncbAutoRegister {
 	static void AllRegist()   { for (int line = 0; line < LINE_COUNT; line++) AllRegist(  static_cast<LineT>(line)); }
 	static void AllUnregist() { for (int line = 0; line < LINE_COUNT; line++) AllUnregist(static_cast<LineT>(line)); }
 	static bool LoadModule(const ttstr &_name);
+    static void EndSession();
+    static std::vector<const ncbAutoRegister *> _sessionRegistrars;
 	// Source/test-only diagnostic in this integrated port. None of the four
 	// final reference images retains a HasModule function or a third runtime
 	// consumer of _internal_plugins: their complete map xrefs are global init,
