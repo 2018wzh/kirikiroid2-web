@@ -23,8 +23,9 @@ or second application event loop. Audio uses the original OpenAL playback device
 - `layerExImage`: `23a9214f9b6e9bc3267b964707efa269c041b919`, compiled unchanged.
 - `native/include/shinki_emu.h` is the generated shared header of
   `shinki-emu-abi` at ShinkiEMU `cb8d9dd22d7d0ab129085b324c94d6dc81fa19e3`
-  (ABI v3), the same revision `Cargo.toml` pins. Copy it again with the shared
-  crate whenever that revision changes; do not edit the header independently.
+  (ABI v3). Cargo pins the shared ABI and build helper revisions in
+  `Cargo.toml`; copy the header again whenever the ABI header changes,
+  rather than editing this vendored copy independently.
 
 ## Ownership and reopen
 
@@ -107,9 +108,11 @@ registered before any BPG image loads. Ship every FFmpeg DLL that
 `dumpbin /dependents shinki_emu_kirikiroid2_web.dll` lists (from the vcpkg
 `installed/x64-windows/bin/` directory) in the core directory.
 
-From the ShinkiEMU checkout, prepare dependencies explicitly, then build:
+From a VS x64 developer shell in the ShinkiEMU checkout, prepare dependencies
+explicitly, then build with Ninja (avoids MSBuild's long-path file-tracking limit):
 
 ```powershell
+$env:CMAKE_GENERATOR = "Ninja"
 cargo xtask deps --target x86_64-pc-windows-msvc --core kirikiroid2-web
 cargo xtask build --target x86_64-pc-windows-msvc --core kirikiroid2-web --release
 ```
