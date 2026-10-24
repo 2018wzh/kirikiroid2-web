@@ -6,8 +6,8 @@ use std::{env, fs, path::PathBuf};
 fn build() -> Result<(), Box<dyn std::error::Error>> {
     let target = env::var("TARGET")?;
     let host = env::var("HOST")?;
-    if target != "x86_64-pc-windows-msvc" || host != target {
-        return Err(format!("KiriKiri requires a native Windows x64/MSVC build; HOST={host}, TARGET={target}").into());
+    if !matches!(target.as_str(), "x86_64-pc-windows-msvc" | "x86_64-unknown-linux-gnu") || host != target {
+        return Err(format!("KiriKiri requires a native Windows x64/MSVC or Linux x64/GNU build; HOST={host}, TARGET={target}").into());
     }
     for name in ["PATH", "NUM_JOBS", "VCToolsInstallDir", "WindowsSdkDir"] {
         println!("cargo:rerun-if-env-changed={name}");
@@ -15,15 +15,17 @@ fn build() -> Result<(), Box<dyn std::error::Error>> {
     let adapter = PathBuf::from(env::var_os("CARGO_MANIFEST_DIR").ok_or("missing CARGO_MANIFEST_DIR")?);
     let root = adapter.parent().ok_or("adapter has no parent")?;
     let vcpkg = PathBuf::from(env::var_os("VCPKG_ROOT").ok_or(
-        "VCPKG_ROOT is missing; run cargo xtask deps --target x86_64-pc-windows-msvc --core kirikiroid2-web",
+        "VCPKG_ROOT is missing; run cargo xtask deps for kirikiroid2-web",
     )?);
     let toolchain = vcpkg.join("scripts/buildsystems/vcpkg.cmake");
     let installed = PathBuf::from(env::var_os("SHINKI_EMU_VCPKG_INSTALLED").ok_or(
         "SHINKI_EMU_VCPKG_INSTALLED is missing; run cargo xtask deps for kirikiroid2-web",
     )?);
     let triplet = env::var("SHINKI_EMU_VCPKG_TRIPLET")?;
-    if triplet != "x64-windows" || !toolchain.is_file() || !installed.join(&triplet).join("lib").is_dir() {
-        return Err("KiriKiri requires the prepared x64-windows vcpkg installation; run cargo xtask deps".into());
+    let windows = target.ends_with("windows-msvc");
+    let expected_triplet = if windows { "x64-windows" } else { "x64-linux-dynamic" };
+    if triplet != expected_triplet || !toolchain.is_file() || !installed.join(&triplet).join("lib").is_dir() {
+        return Err(format!("KiriKiri requires the prepared {expected_triplet} vcpkg installation; run cargo xtask deps").into());
     }
     let bison = PathBuf::from(env::var_os("BISON_EXECUTABLE").ok_or(
         "BISON_EXECUTABLE is missing; run cargo xtask deps for kirikiroid2-web",
@@ -34,7 +36,7 @@ fn build() -> Result<(), Box<dyn std::error::Error>> {
     println!("cargo:rerun-if-changed={}", toolchain.display());
     println!("cargo:rerun-if-changed={}", bison.display());
     let definitions = vec![
-        ("WINDOWS".into(), "ON".into()),
+        (if windows { "WINDOWS" } else { "LINUX" }.into(), "ON".into()),
         ("KRKR2_SHINKI_EMU".into(), "ON".into()),
         ("ENABLE_TESTS".into(), "OFF".into()),
         ("BUILD_TOOLS".into(), "OFF".into()),
@@ -44,7 +46,13 @@ fn build() -> Result<(), Box<dyn std::error::Error>> {
     ];
     let native = configure_cmake(root, &definitions, &["shinki_emu_kirikiroid2_web"])?;
     let directory = native.join("shinki");
-    for name in ["shinki_emu_kirikiroid2_web.dll", "shinki_emu_kirikiroid2_web.lib", "shinki_emu_kirikiroid2_web_lifecycle_test.lib"] {
+    let library = if windows { "shinki_emu_kirikiroid2_web.dll" } else { "libshinki_emu_kirikiroid2_web.so" };
+    let required = if windows {
+        vec![library, "shinki_emu_kirikiroid2_web.lib", "shinki_emu_kirikiroid2_web_lifecycle_test.lib"]
+    } else {
+        vec![library, "libshinki_emu_kirikiroid2_web_lifecycle_test.a"]
+    };
+    for name in required {
         if !directory.join(name).is_file() {
             return Err(format!("CMake did not produce {}", directory.join(name).display()).into());
         }
@@ -52,7 +60,7 @@ fn build() -> Result<(), Box<dyn std::error::Error>> {
     println!("cargo:rustc-link-search=native={}", directory.display());
     println!("cargo:rustc-link-lib=dylib=shinki_emu_kirikiroid2_web");
     let mut manifest = CoreBuildManifest::new("kirikiroid2-web", "native-shared")?;
-    manifest.native_library = Some(directory.join("shinki_emu_kirikiroid2_web.dll"));
+    manifest.native_library = Some(directory.join(library));
     manifest.resources.push(BuildAsset {
         source: directory.join("Resources"),
         dest: "Resources".into(),

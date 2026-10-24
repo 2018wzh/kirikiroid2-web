@@ -1,7 +1,4 @@
-#define WIN32_LEAN_AND_MEAN
-#define NOMINMAX
-#include <winsock2.h>
-#include <windows.h>
+#include "environ/vkdefine.h"
 #include "NativeInput.h"
 #include "environ/cocos2d/MainScene.h"
 #include "environ/Application.h"

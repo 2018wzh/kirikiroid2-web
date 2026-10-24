@@ -1,5 +1,5 @@
-if(NOT WINDOWS OR NOT MSVC)
-    message(FATAL_ERROR "KRKR2_SHINKI_EMU currently requires Windows x64/MSVC")
+if(NOT (WINDOWS AND MSVC) AND NOT CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    message(FATAL_ERROR "KRKR2_SHINKI_EMU requires native Windows x64/MSVC or Linux x64/GNU")
 endif()
 add_library(shinki_emu_kirikiroid2_web SHARED NativeOwner.cpp NativeSession.cpp NativeInput.cpp)
 target_include_directories(shinki_emu_kirikiroid2_web PRIVATE
@@ -16,8 +16,15 @@ target_link_options(shinki_emu_kirikiroid2_web PRIVATE
 set_target_properties(shinki_emu_kirikiroid2_web PROPERTIES
     OUTPUT_NAME "shinki_emu_kirikiroid2_web"
     RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/$<0:>"
-    ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/$<0:>")
-cocos_copy_target_dll(shinki_emu_kirikiroid2_web)
+    ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/$<0:>"
+    LIBRARY_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/$<0:>")
+if(WINDOWS)
+    cocos_copy_target_dll(shinki_emu_kirikiroid2_web)
+else()
+    target_link_libraries(shinki_emu_kirikiroid2_web PRIVATE ${CMAKE_DL_LIBS})
+    set_target_properties(shinki_emu_kirikiroid2_web PROPERTIES
+        BUILD_WITH_INSTALL_RPATH TRUE INSTALL_RPATH "$ORIGIN")
+endif()
 add_custom_target(shinki_emu_kirikiroid2_web_resources
     COMMAND ${CMAKE_COMMAND} -E copy_directory
         "${GAME_RES_FOLDER}" "$<TARGET_FILE_DIR:shinki_emu_kirikiroid2_web>/Resources"

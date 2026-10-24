@@ -1,7 +1,4 @@
-#define WIN32_LEAN_AND_MEAN
-#define NOMINMAX
-#include <winsock2.h>
-#include <windows.h>
+#include "NativeText.h"
 #include "NativeSession.h"
 #include "HostModal.h"
 #include "NativeLifecycle.h"
@@ -40,8 +37,9 @@ public:
         auto view = std::unique_ptr<EmbeddedView>(new EmbeddedView());
         glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
         glfwWindowHint(GLFW_FOCUSED, GLFW_FALSE);
-        if(!view->initWithRect("Shinki KrKr context", cocos2d::Rect(0, 0, 960, 640), 1.0f, false))
+        if(!view->initWithRect("Shinki KrKr context", cocos2d::Rect(0, 0, 960, 640), 1.0f, false) || !view->getWindow())
             throw std::runtime_error("SHINKI_EMU_KRKR_NATIVE_GL_CONTEXT");
+        glfwHideWindow(view->getWindow());
         view->autorelease();
         return view.release();
     }
@@ -59,7 +57,7 @@ static std::string path_text(const std::uint8_t *data, std::uint64_t bytes) {
     if(!data || !bytes || bytes > 4096 || std::memchr(data, 0, bytes))
         throw std::runtime_error("SHINKI_EMU_KRKR_NATIVE_PATH_BOUND");
     const auto text = reinterpret_cast<const char *>(data);
-    if(!MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, text, static_cast<int>(bytes), nullptr, 0))
+    if(!valid_utf8(text, bytes))
         throw std::runtime_error("SHINKI_EMU_KRKR_NATIVE_PATH_UTF8");
     std::string result(text, bytes);
     const auto path = std::filesystem::u8path(result);
@@ -163,8 +161,7 @@ void NativeSession::boot(const ShinkiKrkrBootOptions &options) {
     auto director = cocos2d::Director::getInstance();
     director->setDisplayStats(false);
     auto view = director->getOpenGLView();
-    if(!view || !view->getWin32Window()) throw std::runtime_error("SHINKI_EMU_KRKR_NATIVE_GL_WINDOW");
-    ShowWindow(view->getWin32Window(), SW_HIDE);
+    if(!view) throw std::runtime_error("SHINKI_EMU_KRKR_NATIVE_GL_WINDOW");
     // The context is created invisible; its present endpoint only flushes GL.
     glfwSwapInterval(0);
     if(options.window.focused) ::Application->OnActivate();
